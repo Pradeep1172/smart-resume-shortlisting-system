@@ -1,0 +1,142 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Custom UI Utility Styles */
+.glass-panel {
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.02);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.text-glow {
+  text-shadow: 0 0 10px rgba(37, 99, 235, 0.15);
+}
+
+/* Custom Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2563EB;
+}
+
+/* Gradient text helpers */
+.text-gradient-primary {
+  background: linear-gradient(135deg, #2563EB 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, #8B5CF6 0%, #2563EB 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom UI Animations */
+@keyframes scanner {
+  0% { transform: translateY(0); opacity: 0.3; }
+  50% { transform: translateY(110px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.3; }
+}
+.animate-scanner {
+  animation: scanner 2.2s infinite ease-in-out;
+}
+
+@keyframes bounceSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.animate-bounce-slow {
+  animation: bounceSlow 4s infinite ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s forwards cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Auth Page: Aurora Mesh Background Animation */
+@keyframes auroraShift {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  25%      { transform: translate(5%, -8%) scale(1.05); }
+  50%      { transform: translate(-3%, 6%) scale(0.97); }
+  75%      { transform: translate(-6%, -4%) scale(1.03); }
+}
+
+.auth-aurora-1 {
+  animation: auroraShift 15s ease-in-out infinite;
+}
+.auth-aurora-2 {
+  animation: auroraShift 20s ease-in-out infinite reverse;
+}
+.auth-aurora-3 {
+  animation: auroraShift 18s ease-in-out infinite 3s;
+}
+
+/* Auth Page: Orbit Ring Rotation */
+@keyframes orbitSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.auth-orbit {
+  animation: orbitSpin 20s linear infinite;
+}
+
+/* Auth Page: Subtle Pulse */
+@keyframes subtlePulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 0.8; transform: scale(1.04); }
+}
+.auth-pulse {
+  animation: subtlePulse 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.logo-float {
+  animation: float 5s ease-in-out infinite;
+}
+

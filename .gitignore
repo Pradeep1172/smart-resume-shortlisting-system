@@ -1,0 +1,50 @@
+# Environments & API Keys
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+backend/venv/
+
+# Node Dependencies
+node_modules/
+**/node_modules/
+
+# Production Build outputs
+dist/
+dist-ssr/
+frontend/dist/
+out/
+
+# User Uploaded Resumes / Directories
+uploads/
+backend/uploads/
+
+# Databases
+*.db
+*.sqlite
+backend/smart_resume_db.db
+backend/instance/smart_resume_db.db
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Python cache / logs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.log
