@@ -116,6 +116,28 @@ def get_application(app_id):
     return jsonify(app.to_dict()), 200
 
 
+def is_valid_status_transition(current_status, new_status):
+    if current_status == new_status:
+        return True
+    
+    # Normalize approved -> selected, None -> applied
+    curr = 'selected' if current_status == 'approved' else (current_status or 'applied')
+    nxt = 'selected' if new_status == 'approved' else new_status
+    
+    valid_map = {
+        'applied': ['pending_evaluation', 'rejected'],
+        'pending_evaluation': ['evaluated', 'applied', 'rejected'],
+        'evaluated': ['pending_evaluation', 'shortlisted', 'rejected'],
+        'shortlisted': ['evaluated', 'interview', 'selected', 'rejected'],
+        'interview': ['shortlisted', 'selected', 'rejected'],
+        'selected': ['interview', 'hired', 'rejected'],
+        'hired': ['selected', 'rejected'],
+        'rejected': ['applied', 'pending_evaluation', 'evaluated'] # Explicit reactivation allowed
+    }
+    
+    return nxt in valid_map.get(curr, [])
+
+
 @applications_bp.route('/bulk-status', methods=['PUT'])
 @token_required
 @roles_allowed('recruiter', 'admin')
@@ -130,11 +152,12 @@ def bulk_update_application_status():
     if not isinstance(app_ids, list):
         return jsonify({'message': 'application_ids must be a list of integers'}), 400
         
-    if new_status not in ['applied', 'shortlisted', 'interview', 'rejected', 'approved']:
+    if new_status not in ['applied', 'pending_evaluation', 'evaluated', 'shortlisted', 'interview', 'selected', 'hired', 'rejected', 'approved']:
         return jsonify({'message': 'Invalid status type'}), 400
         
     try:
         updated_count = 0
+        skipped_count = 0
         for app_id in app_ids:
             app = Application.query.get(app_id)
             if not app:
@@ -142,6 +165,11 @@ def bulk_update_application_status():
             
             # Recruiter ownership check
             if g.user.role == 'recruiter' and app.job.recruiter_id != g.user.id:
+                continue
+                
+            # Transition Validation check
+            if not is_valid_status_transition(app.status, new_status):
+                skipped_count += 1
                 continue
                 
             app.status = new_status
@@ -157,16 +185,19 @@ def bulk_update_application_status():
             # Notify Recruiter
             recruiter_notif = Notification(
                 user_id=app.job.recruiter_id,
-                message=f"Candidate '{app.candidate_name}' status updated to '{new_status.title()}' for job '{app.job.title}'."
+                message=f"Candidate '{app.candidate.name if app.candidate else 'Candidate'}' status updated to '{new_status.title()}' for job '{app.job.title}'."
             )
             db.session.add(recruiter_notif)
 
             updated_count += 1
             
         db.session.commit()
-        return jsonify({
-            'message': f'Successfully updated status to {new_status} for {updated_count} applications!'
-        }), 200
+        
+        msg = f'Successfully updated status to {new_status} for {updated_count} applications!'
+        if skipped_count > 0:
+            msg += f' Skipped {skipped_count} invalid transitions.'
+            
+        return jsonify({'message': msg}), 200
         
     except Exception as e:
         db.session.rollback()
@@ -188,8 +219,14 @@ def update_application_status(app_id):
         return jsonify({'message': 'Missing status in payload'}), 400
         
     new_status = data.get('status')
-    if new_status not in ['applied', 'shortlisted', 'interview', 'rejected', 'approved']:
+    if new_status not in ['applied', 'pending_evaluation', 'evaluated', 'shortlisted', 'interview', 'selected', 'hired', 'rejected', 'approved']:
         return jsonify({'message': 'Invalid status type'}), 400
+        
+    # Transition Validation check
+    if not is_valid_status_transition(app.status, new_status):
+        return jsonify({
+            'message': f"Invalid status transition from '{app.status or 'applied'}' to '{new_status}'."
+        }), 400
         
     try:
         app.status = new_status
@@ -205,7 +242,7 @@ def update_application_status(app_id):
         # Notify Recruiter
         recruiter_notif = Notification(
             user_id=app.job.recruiter_id,
-            message=f"Candidate '{app.candidate_name}' status updated to '{new_status.title()}' for job '{app.job.title}'."
+            message=f"Candidate '{app.candidate.name if app.candidate else 'Candidate'}' status updated to '{new_status.title()}' for job '{app.job.title}'."
         )
         db.session.add(recruiter_notif)
         
@@ -229,6 +266,10 @@ def rescore_application(app_id):
     # Recruiter check
     if g.user.role == 'recruiter' and app.job.recruiter_id != g.user.id:
         return jsonify({'message': 'Access forbidden: you do not own this job posting'}), 403
+
+    # Block rescore if job scores are outdated due to strategy changes
+    if app.job.scores_outdated:
+        return jsonify({'message': 'Cannot rescore candidate: job evaluation strategy has changed. Please re-evaluate the entire candidate pool first.'}), 400
         
     data = request.get_json() or {}
     eval_type = data.get('evaluation_type', 'keyword')
@@ -249,8 +290,12 @@ def rescore_application(app_id):
                 'message': 'Cannot evaluate candidate: the uploaded resume file is invalid or has insufficient content.'
             }), 400
 
-        # Calculate new score
-        match_data = calculate_match_score(app.resume, app.job, eval_type=eval_type, weights=weights)
+        # Branch based on job's evaluation strategy
+        if app.job.evaluation_strategy == 'quick':
+            from app.services.match_service import calculate_quick_score
+            match_data = calculate_quick_score(app.resume, app.job)
+        else:
+            match_data = calculate_match_score(app.resume, app.job, eval_type=eval_type, weights=weights)
         
         # Remove previous match scores to prevent duplication
         MatchScore.query.filter_by(application_id=app.id).delete()
@@ -265,11 +310,15 @@ def rescore_application(app_id):
             details=match_data['details']
         )
         db.session.add(score_record)
+        
+        # Transition status to evaluated if they are in evaluation phase
+        if app.status in ('applied', 'pending_evaluation') or not app.status:
+            app.status = 'evaluated'
 
         # Notify Recruiter
         recruiter_notif = Notification(
             user_id=app.job.recruiter_id,
-            message=f"AI Evaluation generated for candidate '{app.candidate_name}' ({round(match_data['final_score'])}% Match) for job '{app.job.title}'."
+            message=f"AI Evaluation generated for candidate '{app.candidate.name if app.candidate else 'Candidate'}' ({round(match_data['final_score'])}% Match) for job '{app.job.title}'."
         )
         db.session.add(recruiter_notif)
 
@@ -298,3 +347,41 @@ def reset_evaluations():
     except Exception as e:
         db.session.rollback()
         return f"Error: {str(e)}", 500
+
+
+@applications_bp.route('/<int:app_id>/candidate-profile', methods=['GET'])
+@token_required
+@roles_allowed('recruiter', 'admin')
+def get_candidate_profile_for_recruiter(app_id):
+    """Returns the full candidate profile for a specific application (recruiter view)."""
+    app_obj = Application.query.get_or_404(app_id)
+    
+    # Recruiter isolation: only the job owner can view
+    if g.user.role == 'recruiter' and app_obj.job.recruiter_id != g.user.id:
+        return jsonify({'message': 'Access forbidden'}), 403
+    
+    from app.models.candidate_profile import CandidateProfile
+    
+    candidate = app_obj.candidate
+    profile = CandidateProfile.query.filter_by(user_id=candidate.id).first()
+    resume = app_obj.resume
+    
+    return jsonify({
+        'candidate_id': candidate.id,
+        'candidate_name': candidate.name,
+        'candidate_email': candidate.email,
+        'has_photo': bool(profile and profile.photo_path),
+        'photo_url': f'/api/profile/photo/{candidate.id}' if (profile and profile.photo_path) else None,
+        'profile': profile.to_dict() if profile else {},
+        'resume': {
+            'skills': resume.skills if resume else [],
+            'projects': resume.projects if resume else [],
+            'experience_years': resume.experience_years if resume else 0,
+            'file_name': resume.file_name if resume else None,
+        },
+        'application': {
+            'id': app_obj.id,
+            'status': app_obj.status,
+            'applied_at': app_obj.applied_at.isoformat() if app_obj.applied_at else None,
+        }
+    }), 200

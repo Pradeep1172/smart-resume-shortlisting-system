@@ -368,6 +368,38 @@ def calculate_ats_score(resume, job, weights=None):
     }
 
 
+def calculate_quick_score(resume, job):
+    """
+    Quick Evaluation: Skills/Keyword matching only.
+    No AI calls, no ATS scoring. Designed for fast, high-volume screening.
+
+    Formula: Quick Match (%) = (Matched Required Skills / Total Required Skills) * 100
+
+    Returns a dict compatible with MatchScore creation.
+    """
+    keyword_pct, matched_skills, missing_skills = calculate_keyword_match(
+        resume.skills or [], job.skills_required or []
+    )
+
+    return {
+        'match_percentage': keyword_pct,
+        'ai_score': None,
+        'final_score': keyword_pct,
+        'evaluation_type': 'quick',
+        'details': {
+            'keyword_score': keyword_pct,
+            'quick_match_pct': keyword_pct,
+            'matched_skills': matched_skills,
+            'missing_skills': missing_skills,
+            'total_required_skills': len(sanitize_string_list(job.skills_required or [])),
+            'total_matched_skills': len(matched_skills),
+            'experience_years': float(resume.experience_years or 0.0),
+            'experience_required': float(job.experience_required or 0),
+            'evaluation_strategy': 'quick'
+        }
+    }
+
+
 def calculate_match_score(resume, job, eval_type='keyword', weights=None, template=None):
     """
     Unified evaluation engine. Always calculates all three layers:
@@ -484,6 +516,75 @@ def calculate_match_score(resume, job, eval_type='keyword', weights=None, templa
             'weights_applied': resolved_weights
         }
     }
+
+def generate_pool_quick_analysis(job, applications, scores, matched_skills_all, missing_skills_all):
+    """
+    Generates a local-only pool analysis for Quick Evaluation jobs.
+    No Gemini AI calls — purely statistical summary.
+    """
+    total_apps = len(applications)
+    if total_apps == 0:
+        return {
+            'total_applications': 0,
+            'average_score': 0,
+            'highest_score': 0,
+            'lowest_score': 0,
+            'recommended_threshold': 70,
+            'top_skills_found': [],
+            'most_missing_skills': [],
+            'recommended_count': 0,
+            'ai_summary': "No applications available to analyze.",
+            'evaluation_strategy': 'quick'
+        }
+
+    avg_score = round(sum(scores) / total_apps, 1)
+    highest_score = max(scores)
+    lowest_score = min(scores)
+
+    # Recommended threshold: average + 10, clamped between 50 and 85
+    rec_threshold = max(50, min(85, int(avg_score + 10)))
+
+    # Count skills frequency
+    skills_count = {}
+    for s in matched_skills_all:
+        skills_count[s] = skills_count.get(s, 0) + 1
+
+    missing_count = {}
+    for s in missing_skills_all:
+        missing_count[s] = missing_count.get(s, 0) + 1
+
+    top_skills_found = sorted(skills_count, key=skills_count.get, reverse=True)[:5]
+    most_missing_skills = sorted(missing_count, key=missing_count.get, reverse=True)[:5]
+
+    recommended_count = sum(1 for s in scores if s >= rec_threshold)
+
+    # Build local statistical summary (no AI)
+    summary_parts = [
+        f"Quick Evaluation Summary for '{job.title}': ",
+        f"{total_apps} candidate(s) screened using keyword matching. ",
+        f"Average skill match: {avg_score}% (range: {lowest_score}% \u2013 {highest_score}%). "
+    ]
+    if top_skills_found:
+        summary_parts.append(f"Most common matched skills: {', '.join(top_skills_found)}. ")
+    if most_missing_skills:
+        summary_parts.append(f"Most frequently missing skills: {', '.join(most_missing_skills)}. ")
+    summary_parts.append(
+        f"Recommended shortlist threshold: {rec_threshold}% ({recommended_count} candidate(s) qualify)."
+    )
+
+    return {
+        'total_applications': total_apps,
+        'average_score': avg_score,
+        'highest_score': highest_score,
+        'lowest_score': lowest_score,
+        'recommended_threshold': rec_threshold,
+        'top_skills_found': top_skills_found,
+        'most_missing_skills': most_missing_skills,
+        'recommended_count': recommended_count,
+        'ai_summary': ''.join(summary_parts),
+        'evaluation_strategy': 'quick'
+    }
+
 
 def generate_pool_ai_analysis(job, applications, scores, matched_skills_all, missing_skills_all):
     import os

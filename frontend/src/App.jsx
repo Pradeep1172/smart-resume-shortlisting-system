@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Landing from './pages/Landing';
 import SplashScreen from './components/common/SplashScreen';
 import Footer from './components/common/Footer';
+import AdminFooter from './components/common/AdminFooter';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
@@ -40,6 +41,7 @@ function RoleRoute({ children, allowedRoles }) {
 }
 
 function AppContent() {
+  const { user } = useContext(AuthContext);
   const location = useLocation();
   const isAuthPage = ['/login', '/register'].includes(location.pathname);
 
@@ -54,7 +56,7 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           
           {/* Candidate-specific and Shared paths */}
-          {['/jobs', '/saved-jobs', '/applications', '/resumes', '/notifications', '/profile', '/tracking', '/upload', '/dashboard'].map(path => (
+          {['/jobs', '/saved-jobs', '/applications', '/resumes', '/notifications', '/profile', '/tracking', '/upload', '/dashboard', '/improve-resume'].map(path => (
             <Route 
               key={path}
               path={path}
@@ -69,7 +71,7 @@ function AppContent() {
           ))}
 
           {/* Recruiter-specific paths */}
-          {['/jobs/create', '/selected', '/rejected', '/interviews', '/analytics', '/settings'].map(path => (
+          {['/jobs/create', '/analytics', '/settings', '/external-hiring'].map(path => (
             <Route 
               key={path}
               path={path}
@@ -83,8 +85,7 @@ function AppContent() {
             />
           ))}
 
-          {/* Admin-specific paths */}
-          {['/users', '/recruiters', '/candidates', '/jobs-monitoring', '/admin-analytics', '/system-config', '/ai-config', '/logs'].map(path => (
+          {['/users', '/recruiters', '/candidates', '/jobs-monitoring', '/jobs-monitoring/recruiters/:id', '/jobs-monitoring/recruiters/:id/jobs/:jobId/applicants', '/admin-analytics', '/system-config', '/ai-config', '/logs', '/exports'].map(path => (
             <Route 
               key={path}
               path={path}
@@ -102,7 +103,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!isAuthPage && <Footer />}
+      {!isAuthPage && (!user || user?.role === 'candidate') && <Footer />}
     </div>
   );
 }

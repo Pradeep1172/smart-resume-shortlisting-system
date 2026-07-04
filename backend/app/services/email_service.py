@@ -24,10 +24,11 @@ def _build_otp_html(name: str, otp: str) -> str:
     """Return a premium HTML email body for OTP delivery."""
     # Render each OTP digit in its own styled box for large, clear display
     otp_digits_html = "".join(
-        f'<span style="display:inline-block;width:44px;height:56px;line-height:56px;'
-        f'text-align:center;background:#0f172a;border:2px solid #4f46e5;'
-        f'border-radius:10px;font-size:28px;font-weight:900;color:#a5b4fc;'
-        f'font-family:\'Courier New\',monospace;margin:0 4px;">{d}</span>'
+        f'<span style="display:inline-block;width:52px;height:64px;line-height:64px;'
+        f'text-align:center;background:#ffffff;border:2.5px solid #4f46e5;'
+        f'border-radius:12px;font-size:38px;font-weight:800;color:#0f172a;'
+        f'font-family:\'Courier New\',monospace;margin:0 6px;'
+        f'box-shadow:0 4px 10px rgba(0,0,0,0.15);">{d}</span>'
         for d in otp
     )
 
@@ -244,21 +245,22 @@ def _smtp_send(to_email: str, otp: str, name: str) -> None:
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_from, [to_email], msg.as_string())
 
-    print(f"[ShortlistIQ] ✅ OTP email delivered to {to_email}")
+    print(f"[ShortlistIQ] [OK] OTP email delivered to {to_email}")
 
 
 def send_otp_email(to_email: str, otp: str, name: str) -> bool:
     """
-    Dispatch the OTP email.
-
-    Strategy:
-    - If SMTP credentials are set → send synchronously so the OTP is
-      committed to DB before the HTTP response returns (avoids a race
-      condition where the user tries to verify before the DB write).
-    - Falls back to console log when running without credentials (dev mode).
-    - Raises RuntimeError on SMTP failure so the caller can surface a clean
-      HTTP 500 instead of silently swallowing the error.
+    Dispatch the OTP email synchronously.
+    - If SMTP credentials are set → send synchronously so we can raise
+      RuntimeError on SMTP failure and roll back database transactions.
+    - Falls back to console log when running without credentials (dev mode)
+      or when sending to test domains to avoid hitting rate limits.
     """
+    # ── Test domain bypass (e.g., @test.com or @example.com) ─────────────
+    if to_email.lower().endswith(('@test.com', '@example.com', '.test')):
+        print(f"[ShortlistIQ OTP - TEST BYPASS] Email: {to_email} | OTP: {otp}")
+        return True
+
     smtp_host = Config.SMTP_HOST
     smtp_user = Config.SMTP_USER
     smtp_password = Config.SMTP_PASSWORD
@@ -266,24 +268,182 @@ def send_otp_email(to_email: str, otp: str, name: str) -> bool:
     # ── Dev fallback (no SMTP configured) ────────────────────────────────
     if not smtp_host or not smtp_user or not smtp_password:
         print(f"[ShortlistIQ OTP - DEV] Email: {to_email} | OTP: {otp}")
-        print("  ⚠  SMTP not configured. Set SMTP_HOST / SMTP_USER / SMTP_PASSWORD in .env")
+        print("  [WARNING] SMTP not configured. Set SMTP_HOST / SMTP_USER / SMTP_PASSWORD in .env")
         return True
 
-    # ── Send in background thread so registration HTTP response is instant ─
-    # The OTP + expiry are already written to the user object before this call,
-    # so the verify endpoint will work even if the email is still in-flight.
+    # ── Send synchronously ───────────────────────────────────────────────
+    try:
+        _smtp_send(to_email, otp, name)
+        return True
+    except Exception as exc:
+        raise RuntimeError(f"Email delivery failed: {str(exc)}")
+
+
+def send_shortlist_email(to_email: str, candidate_name: str, job_title: str, company_name: str = "Our Company", match_score: float = None) -> bool:
+    """
+    Sends a shortlist email notification to a candidate.
+    """
+    # ── Test domain bypass (e.g., @test.com or @example.com) ─────────────
+    if to_email.lower().endswith(('@test.com', '@example.com', '.test')):
+        print(f"[ShortlistIQ Shortlist - TEST BYPASS] Email to: {to_email}")
+        return True
+
+    smtp_host = Config.SMTP_HOST
+    smtp_user = Config.SMTP_USER
+    smtp_password = Config.SMTP_PASSWORD
+    smtp_port = Config.SMTP_PORT
+    smtp_from = Config.SMTP_FROM or smtp_user
+
+    candidate_name = candidate_name or "Candidate"
+    subject = f"Congratulations! You've been shortlisted for {job_title} at {company_name}"
+
+    shortlist_date = datetime.now().strftime("%d %B %Y")
+
+    plain_text = (
+        f"Dear {candidate_name},\n\n"
+        f"Congratulations! We are pleased to inform you that you have been shortlisted for the following position:\n\n"
+        f"Job Role: {job_title}\n"
+        f"Company: {company_name}\n"
+        f"Shortlisted On: {shortlist_date}\n\n"
+        f"Based on your application and resume evaluation, you have successfully qualified for the next stage of the recruitment process. Our hiring team will contact you soon with further details regarding the interview process.\n\n"
+        f"Thank you for your interest in joining {company_name}. We wish you all the best.\n\n"
+        f"Best Regards,\n"
+        f"ShortlistIQ Recruitment Team"
+    )
+
+    if not smtp_host or not smtp_user or not smtp_password:
+        print(f"[ShortlistIQ Shortlist - DEV] Email to: {to_email}")
+        print(plain_text)
+        print("  [WARNING] SMTP not configured. Set SMTP_HOST / SMTP_USER / SMTP_PASSWORD in .env")
+        return True
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = smtp_from
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(plain_text, "plain"))
+
     def _bg_send():
         try:
-            _smtp_send(to_email, otp, name)
-        except smtplib.SMTPAuthenticationError as exc:
-            print(f"[ShortlistIQ] ❌ SMTP auth failed — check App Password: {exc}")
-        except smtplib.SMTPException as exc:
-            print(f"[ShortlistIQ] ❌ SMTP error: {exc}")
+            context = ssl.create_default_context()
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_from, [to_email], msg.as_string())
+            print(f"[ShortlistIQ] [OK] Shortlist email delivered to {to_email}")
         except Exception as exc:
-            print(f"[ShortlistIQ] ❌ Unexpected email error: {exc}")
+            print(f"[ShortlistIQ] [ERROR] Shortlist email error: {exc}")
 
     thread = threading.Thread(target=_bg_send, daemon=True)
     thread.start()
-
-    print(f"[ShortlistIQ] 📨 OTP email queued for {to_email} (background thread)")
     return True
+
+
+def send_approval_email(to_email: str, name: str, temp_password: str) -> bool:
+    """
+    Sends an approval email containing the temporary password.
+    """
+    if to_email.lower().endswith(('@test.com', '@example.com', '.test')):
+        print(f"[ShortlistIQ Approval - TEST BYPASS] Email to: {to_email} | Temp Password: {temp_password}")
+        return True
+
+    smtp_host = Config.SMTP_HOST
+    smtp_user = Config.SMTP_USER
+    smtp_password = Config.SMTP_PASSWORD
+    smtp_port = Config.SMTP_PORT
+    smtp_from = Config.SMTP_FROM or smtp_user
+
+    subject = "ShortlistIQ — Recruiter Account Approved!"
+    plain_text = (
+        f"Dear {name},\n\n"
+        f"Congratulations! Your recruiter account has been approved by the Administrator.\n\n"
+        f"You can now log in using the following credentials:\n"
+        f"Login Email: {to_email}\n"
+        f"Temporary Password: {temp_password}\n\n"
+        f"Important: For security reasons, you will be required to change your password during your first login before you can access the dashboard.\n\n"
+        f"Regards,\n"
+        f"ShortlistIQ Team"
+    )
+
+    if not smtp_host or not smtp_user or not smtp_password:
+        print(f"[ShortlistIQ Approval - DEV] Email to: {to_email} | Temp Password: {temp_password}")
+        print(plain_text)
+        return True
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = smtp_from
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(plain_text, "plain"))
+
+    def _bg_send():
+        try:
+            context = ssl.create_default_context()
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_from, [to_email], msg.as_string())
+            print(f"[ShortlistIQ] [OK] Approval email delivered to {to_email}")
+        except Exception as exc:
+            print(f"[ShortlistIQ] [ERROR] Approval email error: {exc}")
+
+    thread = threading.Thread(target=_bg_send, daemon=True)
+    thread.start()
+    return True
+
+
+def send_rejection_email(to_email: str, name: str) -> bool:
+    """
+    Sends a rejection email explaining the recruiter registration request was not approved.
+    """
+    if to_email.lower().endswith(('@test.com', '@example.com', '.test')):
+        print(f"[ShortlistIQ Rejection - TEST BYPASS] Email to: {to_email}")
+        return True
+
+    smtp_host = Config.SMTP_HOST
+    smtp_user = Config.SMTP_USER
+    smtp_password = Config.SMTP_PASSWORD
+    smtp_port = Config.SMTP_PORT
+    smtp_from = Config.SMTP_FROM or smtp_user
+
+    subject = "ShortlistIQ — Recruiter Registration Status"
+    plain_text = (
+        f"Dear {name},\n\n"
+        f"Thank you for your interest in registering as a recruiter on ShortlistIQ.\n\n"
+        f"After reviewing your company registration details, we regret to inform you that your registration request could not be approved at this time. If you believe this is a mistake, please reach out to us.\n\n"
+        f"Regards,\n"
+        f"ShortlistIQ Team"
+    )
+
+    if not smtp_host or not smtp_user or not smtp_password:
+        print(f"[ShortlistIQ Rejection - DEV] Email to: {to_email}")
+        print(plain_text)
+        return True
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = smtp_from
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(plain_text, "plain"))
+
+    def _bg_send():
+        try:
+            context = ssl.create_default_context()
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_from, [to_email], msg.as_string())
+            print(f"[ShortlistIQ] [OK] Rejection email delivered to {to_email}")
+        except Exception as exc:
+            print(f"[ShortlistIQ] [ERROR] Rejection email error: {exc}")
+
+    thread = threading.Thread(target=_bg_send, daemon=True)
+    thread.start()
+    return True
+

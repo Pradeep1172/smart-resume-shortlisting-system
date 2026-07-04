@@ -28,6 +28,7 @@ export default function Register() {
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingRole, setPendingRole] = useState('candidate');
   const [otp, setOtp] = useState('');
+  const [otpCodeFromServer, setOtpCodeFromServer] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
@@ -35,26 +36,91 @@ export default function Register() {
   const [passFocused, setPassFocused] = useState(false);
   const [otpFocused, setOtpFocused] = useState(false);
 
+  // Recruiter-specific state
+  const [companyName, setCompanyName] = useState('');
+  const [companyWebsite, setCompanyWebsite] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [hrEmail, setHrEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [companySize, setCompanySize] = useState('');
+  const [companyDescription, setCompanyDescription] = useState('');
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
+
+  // Recruiter-specific focused states
+  const [compNameFocused, setCompNameFocused] = useState(false);
+  const [websiteFocused, setWebsiteFocused] = useState(false);
+  const [compEmailFocused, setCompEmailFocused] = useState(false);
+  const [hrEmailFocused, setHrEmailFocused] = useState(false);
+  const [phoneFocused, setPhoneFocused] = useState(false);
+  const [addressFocused, setAddressFocused] = useState(false);
+  const [industryFocused, setIndustryFocused] = useState(false);
+  const [sizeFocused, setSizeFocused] = useState(false);
+  const [descFocused, setDescFocused] = useState(false);
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true });
   }, [user, navigate]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roleParam = params.get('role');
+    if (roleParam === 'candidate' || roleParam === 'recruiter') {
+      setRole(roleParam);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !email || !password || !role) { setError('Please fill in all fields'); return; }
+    if (role === 'recruiter') {
+      if (!companyName || !companyWebsite || !companyEmail || !hrEmail || !phone || !companyAddress || !industry || !companySize || !companyDescription) {
+        setError('Please fill in all required company fields');
+        return;
+      }
+    }
     setError('');
     setInfo('');
     setLoading(true);
-    const result = await register(name, email, password, role);
+    let result;
+    if (role === 'recruiter') {
+      const companyDetails = {
+        company_name: companyName,
+        company_website: companyWebsite,
+        company_email: companyEmail,
+        hr_email: hrEmail,
+        phone: phone,
+        company_address: companyAddress,
+        industry: industry,
+        company_size: companySize,
+        company_description: companyDescription
+      };
+      result = await register(name, email, password, role, companyDetails, logoFile);
+    } else {
+      result = await register(name, email, password, role);
+    }
     setLoading(false);
     if (result.success) {
       setPendingEmail(result.email || email);
       setPendingRole(result.role || role);
+      setOtpCodeFromServer(result.otp || '');
       setStep('verify');
       setInfo(result.message || 'A verification code has been sent to your email.');
-      if (result.otp) {
-        setOtp(result.otp);
-      }
+
     } else {
       setError(result.message);
     }
@@ -86,9 +152,7 @@ export default function Register() {
     setResending(false);
     if (result.success) {
       setInfo(result.message);
-      if (result.otp) {
-        setOtp(result.otp);
-      }
+
     } else {
       setError(result.message);
     }
@@ -174,7 +238,7 @@ export default function Register() {
         <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-blue-500/[0.03] rounded-full blur-[100px] pointer-events-none" />
 
         <motion.div initial="hidden" animate="visible"
-          className="w-full max-w-[420px] bg-white rounded-2xl p-8 sm:p-9 shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.03),0_4px_8px_rgba(0,0,0,0.03),0_12px_24px_rgba(0,0,0,0.04),0_24px_48px_rgba(0,0,0,0.06)] flex flex-col gap-7 z-10 relative"
+          className={`w-full ${role === 'recruiter' && step === 'register' ? 'max-w-[760px]' : 'max-w-[420px]'} bg-white rounded-2xl p-8 sm:p-9 shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.03),0_4px_8px_rgba(0,0,0,0.03),0_12px_24px_rgba(0,0,0,0.04),0_24px_48px_rgba(0,0,0,0.06)] flex flex-col gap-7 z-10 relative transition-all duration-300`}
         >
           
           <div className="flex flex-col gap-2.5">
@@ -242,47 +306,244 @@ export default function Register() {
           {step === 'register' && (
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               
-              <motion.div variants={fadeUp} custom={3} className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-700 ml-0.5">Full name</label>
-                <div className={inputWrap(nameFocused)}>
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <User className={`h-4 w-4 transition-colors duration-200 ${nameFocused ? 'text-blue-500' : 'text-slate-400'}`} />
-                  </div>
-                  <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                    onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)}
-                    className="block w-full pl-11 pr-4 py-3.5 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
-                    placeholder="John Doe" required
-                  />
-                </div>
-              </motion.div>
+              {role === 'candidate' ? (
+                <div className="flex flex-col gap-5">
+                  <motion.div variants={fadeUp} custom={3} className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-700 ml-0.5">Full name</label>
+                    <div className={inputWrap(nameFocused)}>
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <User className={`h-4 w-4 transition-colors duration-200 ${nameFocused ? 'text-blue-500' : 'text-slate-400'}`} />
+                      </div>
+                      <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+                        onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)}
+                        className="block w-full pl-11 pr-4 py-3.5 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
+                        placeholder="Pradeep Kumar" required
+                      />
+                    </div>
+                  </motion.div>
 
-              <motion.div variants={fadeUp} custom={4} className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-700 ml-0.5">Email address</label>
-                <div className={inputWrap(emailFocused)}>
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <Mail className={`h-4 w-4 transition-colors duration-200 ${emailFocused ? 'text-blue-500' : 'text-slate-400'}`} />
-                  </div>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
-                    className="block w-full pl-11 pr-4 py-3.5 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
-                    placeholder="name@company.com" required
-                  />
-                </div>
-              </motion.div>
+                  <motion.div variants={fadeUp} custom={4} className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-700 ml-0.5">Email address</label>
+                    <div className={inputWrap(emailFocused)}>
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Mail className={`h-4 w-4 transition-colors duration-200 ${emailFocused ? 'text-blue-500' : 'text-slate-400'}`} />
+                      </div>
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                        onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
+                        className="block w-full pl-11 pr-4 py-3.5 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
+                        placeholder="pradeep@saanvika.com" required
+                      />
+                    </div>
+                  </motion.div>
 
-              <motion.div variants={fadeUp} custom={5} className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-700 ml-0.5">Password</label>
-                <div className={inputWrap(passFocused)}>
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <Lock className={`h-4 w-4 transition-colors duration-200 ${passFocused ? 'text-blue-500' : 'text-slate-400'}`} />
-                  </div>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                    onFocus={() => setPassFocused(true)} onBlur={() => setPassFocused(false)}
-                    className="block w-full pl-11 pr-4 py-3.5 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
-                    placeholder="••••••••••" required
-                  />
+                  <motion.div variants={fadeUp} custom={5} className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-700 ml-0.5">Password</label>
+                    <div className={inputWrap(passFocused)}>
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Lock className={`h-4 w-4 transition-colors duration-200 ${passFocused ? 'text-blue-500' : 'text-slate-400'}`} />
+                      </div>
+                      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                        onFocus={() => setPassFocused(true)} onBlur={() => setPassFocused(false)}
+                        className="block w-full pl-11 pr-4 py-3.5 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
+                        placeholder="••••••••••" required
+                      />
+                    </div>
+                  </motion.div>
                 </div>
-              </motion.div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[50vh] md:max-h-none overflow-y-auto pr-1">
+                  
+                  {/* LEFT COLUMN: Account details */}
+                  <div className="flex flex-col gap-4">
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider pb-1 border-b border-slate-100">
+                      Account Details
+                    </h3>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 ml-0.5">Full name</label>
+                      <div className={inputWrap(nameFocused)}>
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                          <User className={`h-4 w-4 transition-colors duration-200 ${nameFocused ? 'text-blue-500' : 'text-slate-400'}`} />
+                        </div>
+                        <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+                          onFocus={() => setNameFocused(true)} onBlur={() => setNameFocused(false)}
+                          className="block w-full pl-11 pr-4 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
+                          placeholder="Pradeep Kumar" required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 ml-0.5">Email address</label>
+                      <div className={inputWrap(emailFocused)}>
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                          <Mail className={`h-4 w-4 transition-colors duration-200 ${emailFocused ? 'text-blue-500' : 'text-slate-400'}`} />
+                        </div>
+                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                          onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)}
+                          className="block w-full pl-11 pr-4 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
+                          placeholder="pradeep@saanvika.com" required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 ml-0.5">Password</label>
+                      <div className={inputWrap(passFocused)}>
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                          <Lock className={`h-4 w-4 transition-colors duration-200 ${passFocused ? 'text-blue-500' : 'text-slate-400'}`} />
+                        </div>
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                          onFocus={() => setPassFocused(true)} onBlur={() => setPassFocused(false)}
+                          className="block w-full pl-11 pr-4 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
+                          placeholder="••••••••••" required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 ml-0.5">Industry</label>
+                      <div className={inputWrap(industryFocused)}>
+                        <select value={industry} onChange={(e) => setIndustry(e.target.value)}
+                          onFocus={() => setIndustryFocused(true)} onBlur={() => setIndustryFocused(false)}
+                          className="block w-full pl-4 pr-8 py-3 bg-transparent text-slate-900 focus:outline-none text-sm font-medium rounded-xl appearance-none cursor-pointer"
+                          required
+                        >
+                          <option value="">Select Industry</option>
+                          <option value="Technology">Technology / SaaS</option>
+                          <option value="Healthcare">Healthcare</option>
+                          <option value="Finance">Finance / Banking</option>
+                          <option value="Education">Education</option>
+                          <option value="Retail">Retail / E-commerce</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 ml-0.5">Company Size</label>
+                      <div className={inputWrap(sizeFocused)}>
+                        <select value={companySize} onChange={(e) => setCompanySize(e.target.value)}
+                          onFocus={() => setSizeFocused(true)} onBlur={() => setSizeFocused(false)}
+                          className="block w-full pl-4 pr-8 py-3 bg-transparent text-slate-900 focus:outline-none text-sm font-medium rounded-xl appearance-none cursor-pointer"
+                          required
+                        >
+                          <option value="">Select Size</option>
+                          <option value="1-10">1 - 10 employees</option>
+                          <option value="11-50">11 - 50 employees</option>
+                          <option value="51-200">51 - 200 employees</option>
+                          <option value="201-500">201 - 500 employees</option>
+                          <option value="501+">501+ employees</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT COLUMN: Company details */}
+                  <div className="flex flex-col gap-4">
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider pb-1 border-b border-slate-100">
+                      Company details
+                    </h3>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 ml-0.5">Company Name</label>
+                      <div className={inputWrap(compNameFocused)}>
+                        <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)}
+                          onFocus={() => setCompNameFocused(true)} onBlur={() => setCompNameFocused(false)}
+                          className="block w-full px-4 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
+                          placeholder="Saanvika Software Solutions" required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 ml-0.5">Website URL</label>
+                      <div className={inputWrap(websiteFocused)}>
+                        <input type="url" value={companyWebsite} onChange={(e) => setCompanyWebsite(e.target.value)}
+                          onFocus={() => setWebsiteFocused(true)} onBlur={() => setWebsiteFocused(false)}
+                          className="block w-full px-4 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl"
+                          placeholder="https://www.saanvika.com" required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-slate-700 ml-0.5 text-ellipsis overflow-hidden whitespace-nowrap">Official Email</label>
+                        <div className={inputWrap(compEmailFocused)}>
+                          <input type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)}
+                            onFocus={() => setCompEmailFocused(true)} onBlur={() => setCompEmailFocused(false)}
+                            className="block w-full px-3 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-xs font-medium rounded-xl"
+                            placeholder="info@saanvika.com" required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-slate-700 ml-0.5 text-ellipsis overflow-hidden whitespace-nowrap">HR Email</label>
+                        <div className={inputWrap(hrEmailFocused)}>
+                          <input type="email" value={hrEmail} onChange={(e) => setHrEmail(e.target.value)}
+                            onFocus={() => setHrEmailFocused(true)} onBlur={() => setHrEmailFocused(false)}
+                            className="block w-full px-3 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-xs font-medium rounded-xl"
+                            placeholder="careers@saanvika.com" required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-slate-700 ml-0.5">Contact Number</label>
+                        <div className={inputWrap(phoneFocused)}>
+                          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+                            onFocus={() => setPhoneFocused(true)} onBlur={() => setPhoneFocused(false)}
+                            className="block w-full px-3 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-xs font-medium rounded-xl"
+                            placeholder="+91 98765 43210" required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-slate-700 ml-0.5">Address</label>
+                        <div className={inputWrap(addressFocused)}>
+                          <input type="text" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)}
+                            onFocus={() => setAddressFocused(true)} onBlur={() => setAddressFocused(false)}
+                            className="block w-full px-3 py-3 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-xs font-medium rounded-xl"
+                            placeholder="HITEC City, Hyderabad, Telangana" required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700 ml-0.5">Description</label>
+                      <div className={inputWrap(descFocused)}>
+                        <textarea value={companyDescription} onChange={(e) => setCompanyDescription(e.target.value)}
+                          onFocus={() => setDescFocused(true)} onBlur={() => setDescFocused(false)}
+                          className="block w-full px-4 py-2.5 bg-transparent text-slate-900 placeholder-slate-400 focus:outline-none text-sm font-medium rounded-xl resize-none h-18"
+                          placeholder="Building innovative software solutions for businesses across India." required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Logo upload wrapper */}
+                    <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-dashed border-slate-200">
+                      {logoPreview ? (
+                        <img src={logoPreview} className="w-12 h-12 object-contain bg-white rounded-lg border border-slate-100 shadow-sm shrink-0" alt="Logo preview" />
+                      ) : (
+                        <div className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center text-slate-400 font-bold shrink-0">Logo</div>
+                      )}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-700 cursor-pointer hover:text-slate-900 underline">
+                          Upload Company Logo
+                          <input type="file" onChange={handleLogoChange} className="hidden" accept="image/*" />
+                        </label>
+                        <span className="text-[10px] text-slate-400">Optional. JPG, PNG, WEBP, or GIF.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <motion.div variants={fadeUp} custom={6} className="pt-1.5">
                 <button type="submit" disabled={loading}

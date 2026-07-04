@@ -8,7 +8,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = async () => {
-    const token = localStorage.getItem('token');
+    let token = sessionStorage.getItem('token');
+    
+    // If opening a new tab, inherit from the last active window's session
+    if (!token) {
+      token = localStorage.getItem('token');
+      if (token) {
+        sessionStorage.setItem('token', token);
+      }
+    }
+
     if (!token) {
       setUser(null);
       setLoading(false);
@@ -27,6 +36,19 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
+
+    // Sync session to localStorage on focus so new tabs inherit this window's session
+    const handleFocus = () => {
+      const currentToken = sessionStorage.getItem('token');
+      if (currentToken) {
+        localStorage.setItem('token', currentToken);
+      } else {
+        localStorage.removeItem('token');
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const login = async (email, password) => {
@@ -34,6 +56,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await API.post('/auth/login', { email, password });
       const { token, user: userData } = response.data;
+      sessionStorage.setItem('token', token);
       localStorage.setItem('token', token);
       sessionStorage.setItem('pendingPostLoginSplash', 'true');
       setUser(userData);
@@ -49,10 +72,28 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, role) => {
+  const register = async (name, email, password, role, companyDetails = null, logoFile = null) => {
     setLoading(true);
     try {
-      const response = await API.post('/auth/register', { name, email, password, role });
+      let response;
+      if (role === 'recruiter' && companyDetails) {
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('role', role);
+        formData.append('company_details', JSON.stringify(companyDetails));
+        if (logoFile) {
+          formData.append('logo', logoFile);
+        }
+        response = await API.post('/auth/register', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      } else {
+        response = await API.post('/auth/register', { name, email, password, role });
+      }
       return {
         success: true,
         needsVerification: response.data.needs_verification,
@@ -146,6 +187,7 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   const logout = () => {
+    sessionStorage.removeItem('token');
     localStorage.removeItem('token');
     sessionStorage.removeItem('pendingPostLoginSplash');
     setUser(null);

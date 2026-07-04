@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+﻿import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { 
@@ -24,14 +25,19 @@ import {
   Info,
   Calendar,
   Building,
-  Check
+  Check,
+  Sparkles,
+  Cpu,
+  AlertCircle
 } from 'lucide-react';
 import CandidateDashboardHome from './CandidateDashboardHome';
+import CandidateResumeImprovement from './CandidateResumeImprovement';
+import ProfileSettingsTab from './ProfileSettingsTab';
 
 export default function CandidateDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, notifications, markAsRead: markNotifRead } = useContext(AuthContext);
+  const { user, notifications, markAsRead: markNotifRead, checkAuth } = useContext(AuthContext);
 
   const getInitialTab = () => {
     const path = location.pathname;
@@ -42,6 +48,7 @@ export default function CandidateDashboard() {
     if (path === '/profile') return 'profile';
     if (path === '/tracking') return 'tracking';
     if (path === '/jobs') return 'jobs';
+    if (path === '/improve-resume') return 'improve-resume';
     return 'dashboard';
   };
 
@@ -63,6 +70,7 @@ export default function CandidateDashboard() {
 
   // Apply modal states
   const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState(null);
   const [selectedResumeId, setSelectedResumeId] = useState('');
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState('');
@@ -82,10 +90,22 @@ export default function CandidateDashboard() {
     skills: '',
     experience_years: '',
     education: '',
-    portfolio: ''
+    portfolio: '',
+    github_url: '',
+    linkedin_url: '',
+    leetcode_url: '',
+    portfolio_url: '',
+    certifications: '',
+    has_photo: user?.has_photo || false
   });
   const [profileSuccess, setProfileSuccess] = useState('');
   const [profileError, setProfileError] = useState('');
+
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoTimestamp, setPhotoTimestamp] = useState(Date.now());
+  const [photoError, setPhotoError] = useState('');
+  const [photoSaving, setPhotoSaving] = useState(false);
 
   // Active tracking state
   const [trackingAppId, setTrackingAppId] = useState('');
@@ -111,23 +131,31 @@ export default function CandidateDashboard() {
     return Math.round((filledFields.length / fields.length) * 100);
   };
 
-  const fetchData = async () => {
+  const fetchData = async (isBackground = false) => {
     try {
-      setLoading(true);
-      const [resumesRes, jobsRes, appsRes, insightsRes] = await Promise.all([
+      if (!isBackground) setLoading(true);
+      const [resumesRes, jobsRes, appsRes, insightsRes, profileRes] = await Promise.all([
         API.get('/resumes'),
         API.get('/jobs?status=open'),
         API.get('/applications'),
         API.get('/resumes/dashboard-insights').catch(err => {
           console.error("Failed to load dashboard insights", err);
           return { data: null };
-        })
+        }),
+        API.get('/profile').catch(() => ({ data: {} }))
       ]);
 
       setResumes(resumesRes.data);
       setJobs(jobsRes.data);
       setApplications(appsRes.data);
       setDashboardInsights(insightsRes.data);
+      if (profileRes.data && profileRes.data.user_id) {
+        setProfileData(prev => ({
+          ...prev,
+          ...profileRes.data,
+          portfolio: profileRes.data.portfolio_url || prev.portfolio
+        }));
+      }
 
       // Auto-set tracking application if any exists
       if (appsRes.data.length > 0 && !trackingAppId) {
@@ -136,7 +164,7 @@ export default function CandidateDashboard() {
     } catch (err) {
       console.error("Error loading candidate dashboard data", err);
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
@@ -148,7 +176,7 @@ export default function CandidateDashboard() {
 
   // Load initial candidate state
   useEffect(() => {
-    fetchData();
+    fetchData(false);
 
     // Load saved jobs from localStorage
     const saved = localStorage.getItem(`saved_jobs_${user?.id}`);
@@ -167,6 +195,15 @@ export default function CandidateDashboard() {
         email: user?.email || ''
       }));
     }
+  }, [user, activeTab]);
+
+  // Periodic background polling for candidate dashboard data
+  useEffect(() => {
+    if (!user) return;
+    const timer = setInterval(() => {
+      fetchData(true);
+    }, 10000);
+    return () => clearInterval(timer);
   }, [user]);
 
   const ACCEPTED_EXTS = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp'];
@@ -226,7 +263,7 @@ export default function CandidateDashboard() {
       const errData = err.response?.data;
       // Case 1: image or invalid file type
       if (errData?.error_type === 'invalid_file_type') {
-        setUploadError(`${errData.message} — ${errData.detail}`);
+        setUploadError(`${errData.message} â€” ${errData.detail}`);
       } else {
         setUploadError(errData?.message || 'Failed to upload resume.');
       }
@@ -289,16 +326,28 @@ export default function CandidateDashboard() {
     localStorage.setItem(`saved_jobs_${user?.id}`, JSON.stringify(updated));
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     setProfileSuccess('');
     setProfileError('');
     try {
       localStorage.setItem(`candidate_profile_${user?.id}`, JSON.stringify(profileData));
+      await API.post('/profile', {
+        phone: profileData.phone,
+        headline: profileData.headline,
+        bio: profileData.bio,
+        education: profileData.education,
+        certifications: profileData.certifications,
+        github_url: profileData.github_url,
+        linkedin_url: profileData.linkedin_url,
+        leetcode_url: profileData.leetcode_url,
+        portfolio_url: profileData.portfolio_url || profileData.portfolio,
+      });
       setProfileSuccess('Profile configurations saved successfully!');
+      await fetchData();
       setTimeout(() => setProfileSuccess(''), 4000);
     } catch (err) {
-      setProfileError('Failed to save profile configuration.');
+      setProfileError('Failed to save profile configuration: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -311,16 +360,25 @@ export default function CandidateDashboard() {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case 'applied':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-primary/10 border border-brand-primary/20 text-brand-primary"><Clock className="w-3 h-3" /> Applied</span>;
+      case 'pending_evaluation':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-warning/10 border border-brand-warning/20 text-brand-warning"><Clock className="w-3 h-3" /> Pending Evaluation</span>;
+      case 'evaluated':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-primary/10 border border-brand-primary/20 text-brand-primary"><CheckCircle className="w-3 h-3" /> Evaluated</span>;
       case 'shortlisted':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-success/10 text-brand-success border border-brand-success/20"><CheckCircle className="w-3.5 h-3.5" /> Shortlisted</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-success/10 border border-brand-success/20 text-brand-success"><Star className="w-3 h-3" /> Shortlisted</span>;
       case 'interview':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-secondary/10 text-brand-secondary border border-brand-secondary/20"><Clock className="w-3.5 h-3.5" /> Interviewing</span>;
-      case 'rejected':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-danger/10 text-brand-danger border border-brand-danger/20"><XCircle className="w-3.5 h-3.5" /> Rejected</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-accent/10 border border-brand-accent/20 text-brand-accent"><Calendar className="w-3 h-3" /> Interview Scheduled</span>;
+      case 'selected':
       case 'approved':
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-success/20 text-brand-success border border-brand-success/40"><CheckCircle className="w-3.5 h-3.5" /> Selected</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-success/20 border border-brand-success/30 text-brand-success"><Award className="w-3 h-3" /> Selected</span>;
+      case 'hired':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-brand-primary/15 to-brand-success/15 border border-brand-success/35 text-brand-success"><Sparkles className="w-3 h-3" /> Hired</span>;
+      case 'rejected':
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-danger/10 border border-brand-danger/20 text-brand-danger"><XCircle className="w-3 h-3" /> Rejected</span>;
       default:
-        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-primary/10 text-brand-primary border border-brand-primary/20"><Clock className="w-3.5 h-3.5" /> Submitted</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-primary/10 border border-brand-primary/20 text-brand-primary"><Clock className="w-3 h-3" /> Applied</span>;
     }
   };
 
@@ -343,6 +401,7 @@ export default function CandidateDashboard() {
   // Sidebar items
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: Compass },
+    { id: 'improve-resume', label: 'Improve Your Resume', path: '/improve-resume', icon: Sparkles },
     { id: 'jobs', label: 'Browse Jobs', path: '/jobs', icon: Briefcase },
     { id: 'saved-jobs', label: 'Saved Jobs', path: '/saved-jobs', icon: Star },
     { id: 'applications', label: 'My Applications', path: '/applications', icon: ClipboardList },
@@ -394,9 +453,20 @@ export default function CandidateDashboard() {
           </nav>
         </div>
 
-        <div className="hidden md:block border-t border-brand-border/40 pt-4 mt-6 text-xs text-brand-textSecondary">
-          <p className="font-semibold text-brand-textPrimary">{profileData.name || user?.name}</p>
-          <p className="mt-0.5 truncate text-[10px]" title={profileData.headline}>{profileData.headline || 'Job Seeker'}</p>
+        <div className="hidden md:block border-t border-brand-border/40 pt-4 mt-6 text-xs text-brand-textSecondary space-y-2">
+          <div>
+            <p className="font-semibold text-brand-textPrimary truncate">{profileData.name || user?.name}</p>
+            <p className="mt-0.5 truncate text-[10px]" title={profileData.headline}>{profileData.headline || 'Job Seeker'}</p>
+          </div>
+          <div className="pt-1">
+            <div className="flex justify-between items-center text-[10px] mb-1">
+              <span className="font-bold text-brand-textSecondary">Profile Strength</span>
+              <span className="font-extrabold text-brand-primary">{getProfileCompletion()}%</span>
+            </div>
+            <div className="w-full bg-brand-border rounded-full h-1 overflow-hidden">
+              <div className="bg-brand-primary h-full rounded-full transition-all duration-500" style={{ width: `${getProfileCompletion()}%` }}></div>
+            </div>
+          </div>
         </div>
       </aside>
 
@@ -411,8 +481,8 @@ export default function CandidateDashboard() {
           </div>
         ) : (
           <>
-            {/* TAB 1: OVERVIEW DASHBOARD */}
-            {activeTab === 'dashboard' && (
+        {/* TAB 1: OVERVIEW DASHBOARD */}
+        {activeTab === 'dashboard' && (
           <CandidateDashboardHome
             user={user}
             profileData={profileData}
@@ -427,6 +497,16 @@ export default function CandidateDashboard() {
             setPreviewResume={setPreviewResume}
             getStatusBadge={getStatusBadge}
             dashboardInsights={dashboardInsights}
+          />
+        )}
+
+        {/* TAB 1.5: IMPROVE YOUR RESUME */}
+        {activeTab === 'improve-resume' && (
+          <CandidateResumeImprovement
+            resumes={resumes}
+            user={user}
+            profileData={profileData}
+            navigate={navigate}
           />
         )}
 
@@ -493,17 +573,46 @@ export default function CandidateDashboard() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {getPaginatedList(filteredJobs).map(job => (
-                    <div key={job.id} className="glass-panel rounded-2xl p-6 border border-brand-border hover:border-brand-primary/40 transition-all duration-300 flex flex-col justify-between hover:shadow-premium">
+                    <div key={job.id} className="glass-panel border border-brand-border/60 hover:border-brand-primary/40 rounded-3xl p-6 hover:shadow-premium transition-all flex flex-col justify-between group">
                       <div>
+                        {/* Company Logo */}
+                        <div className="flex items-center gap-3 mb-3">
+                          {job.company_logo_path ? (
+                            <img
+                              src={(() => {
+                                const apiBase = API.defaults.baseURL || 'http://localhost:5000/api';
+                                const hostBase = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+                                return `${hostBase}/api/recruiter/logo/${job.recruiter_id}?t=${encodeURIComponent(job.company_logo_path)}`;
+                              })()}
+                              alt="Company Logo"
+                              className="w-10 h-10 rounded-xl object-cover border border-brand-border/40 bg-brand-bg shrink-0"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          {!job.company_logo_path && (
+                            <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-sm shrink-0">
+                              {(job.company_name || job.recruiter_name || 'C')[0].toUpperCase()}
+                            </div>
+                          )}
+                          {job.company_logo_path && (
+                            <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-sm shrink-0" style={{ display: 'none' }}>
+                              {(job.company_name || job.recruiter_name || 'C')[0].toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-xs text-brand-textSecondary font-semibold tracking-tight">{job.company_name || job.recruiter_name || 'Company'}</span>
+                        </div>
                         <div className="flex items-start justify-between gap-4">
-                          <h3 className="text-lg font-bold text-brand-textPrimary hover:text-brand-primary cursor-pointer" onClick={() => handleOpenApplyModal(job)}>{job.title}</h3>
+                          <h3 className="text-lg font-bold text-brand-textPrimary hover:text-brand-primary cursor-pointer transition-colors" onClick={() => setSelectedJobDetails(job)}>{job.title}</h3>
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => toggleSaveJob(job.id)}
                               className={`p-1.5 rounded-lg border transition-all ${
                                 savedJobIds.includes(job.id) 
                                   ? 'bg-brand-secondary/15 border-brand-secondary/35 text-brand-secondary' 
-                                  : 'bg-brand-bg/40 border-brand-border/40 text-brand-textSecondary hover:text-white'
+                                  : 'bg-brand-bg/40 border-brand-border/40 text-brand-textSecondary hover:text-brand-textPrimary hover:bg-brand-panelLight'
                               }`}
                               title={savedJobIds.includes(job.id) ? "Remove from saved" : "Save job"}
                             >
@@ -679,10 +788,37 @@ export default function CandidateDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-brand-border/40 text-sm">
-                      {applications.map((app) => (
+                      {applications.map(app => (
                         <tr key={app.id} className="hover:bg-brand-panelLight/20 transition-colors">
-                          <td className="py-4 px-6 font-semibold text-brand-textPrimary">{app.job_title}</td>
-                          <td className="py-4 px-6 text-brand-textSecondary">Smart Recruit Co / {app.candidate_name}</td>
+                          <td className="py-4 px-6 font-semibold text-brand-textPrimary flex items-center gap-2">
+                            {app.company_logo_path ? (
+                              <img
+                                src={(() => {
+                                  const apiBase = API.defaults.baseURL || 'http://localhost:5000/api';
+                                  const hostBase = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+                                  return `${hostBase}/api/recruiter/logo/${app.recruiter_id}?t=${encodeURIComponent(app.company_logo_path)}`;
+                                })()}
+                                alt=""
+                                className="w-8 h-8 rounded-lg object-cover border border-brand-border/40 bg-brand-bg shrink-0"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            {!app.company_logo_path && (
+                              <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-xs shrink-0">
+                                {(app.company_name || app.recruiter_name || 'C')[0].toUpperCase()}
+                              </div>
+                            )}
+                            {app.company_logo_path && (
+                              <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-xs shrink-0" style={{ display: 'none' }}>
+                                {(app.company_name || app.recruiter_name || 'C')[0].toUpperCase()}
+                              </div>
+                            )}
+                            <span className="truncate max-w-[150px]">{app.job_title}</span>
+                          </td>
+                          <td className="py-4 px-6 text-brand-textSecondary">{app.company_name || app.recruiter_name || 'Company'} / {app.candidate_name}</td>
                           <td className="py-4 px-6 text-brand-textSecondary">{new Date(app.applied_at).toLocaleDateString()}</td>
                           <td className="py-4 px-6">{getStatusBadge(app.status)}</td>
                           <td className="py-4 px-6 text-center">
@@ -709,45 +845,58 @@ export default function CandidateDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
             {/* Upload Box */}
-            <div className="glass-panel rounded-2xl p-6 border border-brand-border space-y-4">
+            <div className="glass-panel rounded-2xl p-6 border border-brand-border space-y-4 card-interactive">
               <h3 className="text-lg font-bold text-brand-textPrimary">Upload Professional Resume</h3>
               <p className="text-xs text-brand-textSecondary leading-relaxed">
-                Upload your PDF resume. Our ATS Parser automatically parses experience years, projects, and skills to matches.
+                Upload your PDF resume. Our ATS Parser automatically parses experience years, projects, and skills for vacancy matches.
               </p>
               
               {uploadSuccess && (
-                <div className="p-3 bg-brand-success/15 border border-brand-success/30 rounded-xl text-brand-success text-xs font-semibold">
+                <div className="p-3 bg-brand-success/15 border border-brand-success/30 rounded-xl text-brand-success text-xs font-semibold animate-fade-in">
                   {uploadSuccess}
                 </div>
               )}
               {uploadError && (
-                <div className="p-3 bg-brand-danger/15 border border-brand-danger/30 rounded-xl text-brand-danger text-xs font-semibold">
+                <div className="p-3 bg-brand-danger/15 border border-brand-danger/30 rounded-xl text-brand-danger text-xs font-semibold animate-fade-in">
                   {uploadError}
                 </div>
               )}
 
               <form onSubmit={handleUploadResume} className="space-y-4">
-                <div className="border-2 border-dashed border-brand-border hover:border-brand-primary rounded-2xl p-6 text-center cursor-pointer transition-colors relative flex flex-col items-center justify-center min-h-[160px] group bg-brand-bg/40">
-                  <input
-                    type="file"
-                    id="resume-file-input"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
-                    onChange={handleFileChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                  />
-                  <Upload className="w-8 h-8 text-brand-textSecondary group-hover:text-brand-primary transition-colors mb-2" />
-                  <span className="text-xs font-bold text-brand-textPrimary block">
-                    {file ? file.name : 'Select Resume Document'}
-                  </span>
-                  <span className="text-[10px] text-brand-textSecondary mt-1 block">
-                    PDF, DOC, DOCX, JPG, PNG, WEBP &bull; Max 5MB
-                  </span>
+                <div className="border-2 border-dashed border-brand-border/80 hover:border-brand-primary/80 rounded-2xl p-6 text-center cursor-pointer transition-all relative flex flex-col items-center justify-center min-h-[180px] group bg-brand-bg/20 hover:bg-brand-primary/5 overflow-hidden">
+                  {uploading ? (
+                    <div className="absolute inset-0 bg-brand-panel/90 flex flex-col items-center justify-center p-4 z-20">
+                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-brand-success shadow-glow animate-scanner"></div>
+                      <div className="w-10 h-10 rounded-full bg-brand-success/10 flex items-center justify-center text-brand-success mb-3 animate-bounce-slow">
+                        <Cpu className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <span className="text-xs font-extrabold text-brand-textPrimary">ShortlistIQ AI Engine</span>
+                      <span className="text-[10px] text-brand-textSecondary mt-1 animate-pulse">Scanning resume & extracting skills...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="file"
+                        id="resume-file-input"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      />
+                      <Upload className="w-8 h-8 text-brand-textSecondary group-hover:text-brand-primary transition-all group-hover:-translate-y-1 mb-2" />
+                      <span className="text-xs font-bold text-brand-textPrimary block max-w-[200px] truncate">
+                        {file ? file.name : 'Select Resume Document'}
+                      </span>
+                      <span className="text-[10px] text-brand-textSecondary mt-1 block">
+                        PDF, DOCX, PNG, JPG &bull; Max 5MB
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <button
                   type="submit"
                   disabled={uploading || !file}
-                  className="w-full bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-95 text-white py-2.5 rounded-xl font-bold shadow-premium flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                  className="w-full bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-95 text-white py-2.5 rounded-xl font-bold shadow-premium flex items-center justify-center gap-2 transition-all btn-pressable disabled:opacity-50 disabled:translate-y-0"
                 >
                   {uploading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -851,7 +1000,7 @@ export default function CandidateDashboard() {
                 notifications.map(notif => (
                   <div key={notif.id} className={`p-5 flex items-start justify-between gap-4 transition-colors ${!notif.is_read ? 'bg-brand-primary/5 border-l-4 border-brand-primary' : ''}`}>
                     <div className="space-y-1">
-                      <p className={`text-xs ${!notif.is_read ? 'text-white font-semibold' : 'text-brand-textSecondary'}`}>
+                      <p className={`text-xs ${!notif.is_read ? 'text-brand-textPrimary font-semibold' : 'text-brand-textSecondary'}`}>
                         {notif.message}
                       </p>
                       <span className="text-[10px] text-brand-textSecondary block">
@@ -875,136 +1024,15 @@ export default function CandidateDashboard() {
 
         {/* TAB 7: PROFILE SETTINGS */}
         {activeTab === 'profile' && (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <div>
-              <h1 className="text-3xl font-extrabold text-brand-textPrimary tracking-tight">Candidate Profile</h1>
-              <p className="text-brand-textSecondary text-sm mt-1">Edit professional settings and bio details stored on this platform.</p>
-            </div>
-
-            {profileSuccess && (
-              <div className="bg-brand-success/10 border border-brand-success/20 text-brand-success p-4 rounded-xl text-xs font-semibold flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 shrink-0" /> {profileSuccess}
-              </div>
-            )}
-            {profileError && (
-              <div className="bg-brand-danger/10 border border-brand-danger/20 text-brand-danger p-4 rounded-xl text-xs font-semibold flex items-center gap-2">
-                <Info className="w-5 h-5 shrink-0" /> {profileError}
-              </div>
-            )}
-
-            <form onSubmit={handleSaveProfile} className="glass-panel border border-brand-border/60 rounded-3xl p-6 md:p-8 space-y-6 shadow-panel">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Full Name</label>
-                  <input
-                    type="text"
-                    value={profileData.name}
-                    onChange={(e) => handleProfileChange('name', e.target.value)}
-                    className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Email Address</label>
-                  <input
-                    type="email"
-                    value={profileData.email}
-                    onChange={(e) => handleProfileChange('email', e.target.value)}
-                    className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary"
-                    required
-                    disabled
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Phone Number</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. +1 (555) 000-0000"
-                    value={profileData.phone}
-                    onChange={(e) => handleProfileChange('phone', e.target.value)}
-                    className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Professional Headline</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Senior Backend Engineer"
-                    value={profileData.headline}
-                    onChange={(e) => handleProfileChange('headline', e.target.value)}
-                    className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Experience (Years)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 5"
-                    value={profileData.experience_years}
-                    onChange={(e) => handleProfileChange('experience_years', e.target.value)}
-                    className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Education / Degree</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. B.S. in Computer Science"
-                    value={profileData.education}
-                    onChange={(e) => handleProfileChange('education', e.target.value)}
-                    className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Skills (Comma separated)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Python, SQL, React, Node.js"
-                  value={profileData.skills}
-                  onChange={(e) => handleProfileChange('skills', e.target.value)}
-                  className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Professional Summary / Bio</label>
-                <textarea
-                  rows="4"
-                  placeholder="Brief overview of your experience, skills, and background..."
-                  value={profileData.bio}
-                  onChange={(e) => handleProfileChange('bio', e.target.value)}
-                  className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary resize-none"
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-brand-textSecondary mb-2">Portfolio / Website URL</label>
-                <input
-                  type="text"
-                  placeholder="e.g. https://portfolio.github.io"
-                  value={profileData.portfolio}
-                  onChange={(e) => handleProfileChange('portfolio', e.target.value)}
-                  className="block w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-textPrimary placeholder-brand-textSecondary text-xs focus:outline-none focus:border-brand-primary"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-brand-primary to-brand-secondary text-white py-3 rounded-xl font-bold shadow-premium flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5"
-              >
-                <Save className="w-4 h-4" /> Save profile details
-              </button>
-            </form>
-          </div>
+          <ProfileSettingsTab
+            profileData={profileData}
+            handleProfileChange={handleProfileChange}
+            handleSaveProfile={handleSaveProfile}
+            profileSuccess={profileSuccess}
+            profileError={profileError}
+            getProfileCompletion={getProfileCompletion}
+            resumes={resumes}
+          />
         )}
 
         {/* TAB 8: STATUS TRACKING */}
@@ -1044,81 +1072,114 @@ export default function CandidateDashboard() {
                         <h3 className="text-xl font-bold text-brand-textPrimary leading-tight">{trackingApp.job_title}</h3>
                         <span className="text-xs text-brand-textSecondary mt-1 block">Recruiter Review Status: {getStatusBadge(trackingApp.status)}</span>
                       </div>
-                      <span className="text-[10px] text-brand-textSecondary font-medium">Applied {new Date(trackingApp.applied_at).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-brand-textSecondary font-semibold">Applied {new Date(trackingApp.applied_at).toLocaleDateString()}</span>
                     </div>
 
                     {/* Timeline stepper */}
-                    <div className="relative pl-8 space-y-8 select-none">
+                    <motion.div 
+                      initial="hidden"
+                      animate="visible"
+                      variants={{
+                        hidden: { opacity: 0 },
+                        visible: {
+                          opacity: 1,
+                          transition: {
+                            staggerChildren: 0.08
+                          }
+                        }
+                      }}
+                      className="relative pl-10 space-y-8 select-none"
+                    >
                       {/* Vertical line connecting steps */}
-                      <div className="absolute left-3.5 top-2 bottom-2 w-0.5 bg-brand-border"></div>
+                      <div className="absolute left-[17px] top-3 bottom-3 w-0.5 bg-brand-border/60"></div>
 
                       {(() => {
                         const status = trackingApp.status;
                         const timelineSteps = [
                           {
                             label: 'Application Submitted',
-                            desc: 'Candidate successfully submitted credentials to system.',
+                            desc: 'Candidate successfully submitted application credentials.',
                             completed: true,
                             active: status === 'applied'
                           },
                           {
-                            label: 'Resume Parsed & Screened',
-                            desc: 'ATS scanned matches against job skills and experience.',
-                            completed: true,
-                            active: false
+                            label: 'Pending Evaluation',
+                            desc: 'Application is queued for ATS parser & AI screening.',
+                            completed: status !== 'applied' && status !== 'pending_evaluation',
+                            active: status === 'pending_evaluation'
                           },
                           {
-                            label: 'Shortlisted / Recruiter Review',
-                            desc: 'Recruiter reviewed matches and verified alignment.',
-                            completed: status === 'shortlisted' || status === 'interview' || status === 'approved',
+                            label: 'Resume Evaluated',
+                            desc: 'ATS score and evaluation summary generated against criteria.',
+                            completed: !['applied', 'pending_evaluation', 'evaluated'].includes(status),
+                            active: status === 'evaluated'
+                          },
+                          {
+                            label: 'Shortlisted',
+                            desc: 'Candidate shortlisted for advanced screening by recruiter.',
+                            completed: ['shortlisted', 'interview', 'selected', 'approved', 'hired'].includes(status),
                             active: status === 'shortlisted'
                           },
                           {
                             label: 'Interview Scheduling',
-                            desc: 'Verification loops or interview schedules arranged.',
-                            completed: status === 'interview' || status === 'approved',
+                            desc: 'Interviews scheduled to evaluate skills and domain fits.',
+                            completed: ['interview', 'selected', 'approved', 'hired'].includes(status),
                             active: status === 'interview'
                           },
                           {
-                            label: 'Hiring Decision',
-                            desc: status === 'rejected' ? 'Application was not selected at this time.' : status === 'approved' ? 'Congratulations! Offer released.' : 'Awaiting final selection outcome.',
-                            completed: status === 'approved' || status === 'rejected',
-                            active: status === 'approved' || status === 'rejected',
+                            label: 'Hiring Outcome',
+                            desc: status === 'rejected' 
+                              ? 'Application was not selected at this time.' 
+                              : status === 'hired'
+                                ? 'Congratulations! You have been officially hired! ðŸŽ‰'
+                                : ['selected', 'approved'].includes(status) 
+                                  ? 'Congratulations! You have been selected for this position.' 
+                                  : 'Awaiting final hiring decision from recruiter.',
+                            completed: ['selected', 'approved', 'hired', 'rejected'].includes(status),
+                            active: ['selected', 'approved', 'hired', 'rejected'].includes(status),
                             isFinal: true
                           }
                         ];
 
                         return timelineSteps.map((step, idx) => {
                           const isGreen = step.completed && status !== 'rejected';
-                          const isRed = step.isFinal && status === 'rejected';
+                          const isRed = (step.isFinal && status === 'rejected') || (step.active && status === 'rejected');
                           const isBlue = step.active && status !== 'rejected';
                           
                           let circleStyle = 'bg-brand-bg border-brand-border text-brand-textSecondary';
                           if (isRed) {
-                            circleStyle = 'bg-brand-danger/20 border-brand-danger text-brand-danger scale-110';
+                            circleStyle = 'bg-brand-danger/10 border-brand-danger text-brand-danger scale-110 shadow-sm';
                           } else if (isGreen) {
-                            circleStyle = 'bg-brand-success/20 border-brand-success text-brand-success';
+                            circleStyle = 'bg-brand-success/15 border-brand-success text-brand-success';
                           } else if (isBlue) {
-                            circleStyle = 'bg-brand-primary/20 border-brand-primary text-brand-primary scale-110 shadow-premium animate-pulse';
+                            circleStyle = 'bg-brand-primary/15 border-brand-primary text-brand-primary scale-110 shadow-premium animate-pulse-slow';
                           }
 
                           return (
-                            <div key={idx} className="relative flex gap-4 text-xs">
+                            <motion.div 
+                              key={idx} 
+                              variants={{
+                                hidden: { opacity: 0, x: -15 },
+                                visible: { opacity: 1, x: 0 }
+                              }}
+                              transition={{ duration: 0.3, ease: "easeOut" }}
+                              className="relative flex gap-4 text-xs"
+                            >
                               {/* Circle icon */}
-                              <div className={`absolute -left-8 top-0.5 w-7.5 h-7.5 rounded-full border flex items-center justify-center text-xs font-bold transition-all z-10 ${circleStyle}`}>
-                                {isRed ? '✗' : step.completed ? '✓' : idx + 1}
+                              <div className={`absolute -left-10 top-0 w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-all z-10 ${circleStyle}`}>
+                                {isRed ? 'âœ—' : step.completed ? 'âœ“' : idx + 1}
                               </div>
                               <div className="space-y-1">
-                                <h4 className={`font-bold text-sm ${step.active || step.completed ? 'text-white' : 'text-brand-textSecondary'}`}>
+                                <h4 className={`font-bold text-sm ${step.active || step.completed ? 'text-brand-textPrimary' : 'text-brand-textSecondary'}`}>
                                   {step.label}
                                 </h4>
                                 <p className="text-xs text-brand-textSecondary leading-relaxed">{step.desc}</p>
                               </div>
-                            </div>
+                            </motion.div>
                           );
                         });
                       })()}
-                    </div>
+                    </motion.div>
                   </div>
                 )}
               </div>
@@ -1128,6 +1189,220 @@ export default function CandidateDashboard() {
           </>
         )}
       </main>
+
+      {/* JOB DETAILS DRAWER */}
+      <AnimatePresence>
+        {selectedJobDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm p-0">
+            <div className="fixed inset-0" onClick={() => setSelectedJobDetails(null)}></div>
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 200 }}
+              className="w-full max-w-xl h-full bg-brand-panel border-l border-brand-border p-6 shadow-premium flex flex-col justify-between z-10 relative"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-brand-border/40 shrink-0">
+                <div>
+                  <span className="text-[10px] font-bold text-brand-primary uppercase tracking-widest block mb-1">Vacancy Information</span>
+                  <h3 className="text-lg font-bold text-brand-textPrimary truncate max-w-md" title={selectedJobDetails.title}>{selectedJobDetails.title}</h3>
+                </div>
+                <button 
+                  onClick={() => setSelectedJobDetails(null)}
+                  className="text-brand-textSecondary hover:text-brand-textPrimary bg-brand-bg hover:bg-brand-panelLight p-2 rounded-xl border border-brand-border transition-all"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Job Details Scroll Area */}
+              <div className="flex-1 overflow-y-auto py-6 space-y-6 pr-1">
+                {/* Recruiter & Basic details */}
+                <div className="glass-panel border border-brand-border/40 p-5 rounded-2xl bg-gradient-to-br from-brand-primary/5 via-transparent to-transparent space-y-4">
+                  {/* Company Identity Row */}
+                  <div className="flex items-center gap-3 border-b border-brand-border/30 pb-3">
+                    {selectedJobDetails.company_logo_path ? (
+                      <img
+                        src={(() => {
+                          const apiBase = API.defaults.baseURL || 'http://localhost:5000/api';
+                          const hostBase = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+                          return `${hostBase}/api/recruiter/logo/${selectedJobDetails.recruiter_id}?t=${encodeURIComponent(selectedJobDetails.company_logo_path)}`;
+                        })()}
+                        alt="Company Logo"
+                        className="w-12 h-12 rounded-xl object-cover border border-brand-border/40 bg-brand-bg shrink-0"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    {!selectedJobDetails.company_logo_path && (
+                      <div className="w-12 h-12 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-base shrink-0">
+                        {(selectedJobDetails.company_name || selectedJobDetails.recruiter_name || 'C')[0].toUpperCase()}
+                      </div>
+                    )}
+                    {selectedJobDetails.company_logo_path && (
+                      <div className="w-12 h-12 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-base shrink-0" style={{ display: 'none' }}>
+                        {(selectedJobDetails.company_name || selectedJobDetails.recruiter_name || 'C')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="text-sm font-bold text-brand-textPrimary">{selectedJobDetails.company_name || 'Company'}</h4>
+                      <p className="text-[10px] text-brand-textSecondary">Posted by {selectedJobDetails.recruiter_name}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span className="text-brand-textSecondary block">Location:</span>
+                      <strong className="text-brand-textPrimary font-semibold">{selectedJobDetails.location || 'Remote'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-brand-textSecondary block">Experience Required:</span>
+                      <strong className="text-brand-textPrimary font-semibold">{selectedJobDetails.experience_required}+ Years</strong>
+                    </div>
+                    <div>
+                      <span className="text-brand-textSecondary block">Screening Threshold:</span>
+                      <strong className="text-brand-accent font-semibold">{selectedJobDetails.min_match_score || 70}% Match</strong>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-brand-textSecondary block">Deadline:</span>
+                      <strong className="text-brand-textPrimary font-semibold">{selectedJobDetails.deadline ? new Date(selectedJobDetails.deadline).toLocaleDateString() : 'N/A'}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Compatibility score matching if resume is uploaded */}
+                {(() => {
+                  const resumeIsValid = resumes.length > 0 && (resumes[0].extracted_text?.length ?? 0) >= 150;
+                  const matchDetail = resumeIsValid && dashboardInsights?.recommended_jobs?.find(rj => rj.job_id === selectedJobDetails.id);
+                  if (!resumeIsValid) {
+                    return (
+                      <div className="bg-brand-warning/5 border border-brand-warning/20 p-4 rounded-xl text-xs text-brand-textSecondary leading-normal">
+                        âš ï¸ Upload a valid text-based resume in the <strong>Resume Manager</strong> to unlock AI matching score and compatibility suggestions for this position.
+                      </div>
+                    );
+                  }
+                  
+                  const score = matchDetail ? Math.round(matchDetail.match_score) : null;
+                  const matchedSkills = matchDetail?.matched_skills || [];
+                  const missingSkills = matchDetail?.missing_skills || [];
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 rounded-2xl border bg-brand-bg/50 border-brand-border/60">
+                        <div>
+                          <span className="text-xs font-bold text-brand-textPrimary block">AI Compatibility Match</span>
+                          <span className="text-[10px] text-brand-textSecondary block mt-0.5">Calculated based on your extracted resume skills</span>
+                        </div>
+                        <span className={`text-xl font-black px-3 py-1.5 rounded-xl border ${
+                          score === null ? 'bg-brand-panel text-brand-textSecondary' :
+                          score >= 85 ? 'bg-brand-success/15 border-brand-success/30 text-brand-success' :
+                          score >= 70 ? 'bg-brand-primary/15 border-brand-primary/30 text-brand-primary' :
+                          'bg-brand-danger/10 border-brand-danger/25 text-brand-danger'
+                        }`}>
+                          {score === null ? 'N/A' : `${score}%`}
+                        </span>
+                      </div>
+
+                      {/* Skills Match detail */}
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="text-[10px] font-bold text-brand-success uppercase tracking-wider mb-1.5">âœ“ Matched Skills ({matchedSkills.length})</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {matchedSkills.length > 0 ? (
+                              matchedSkills.map((s, idx) => (
+                                <span key={idx} className="text-[9px] bg-brand-success/10 border border-brand-success/20 text-brand-success px-2.5 py-0.5 rounded-lg font-medium">{s}</span>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-brand-textSecondary italic">No matched skills found.</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-[10px] font-bold text-brand-accent uppercase tracking-wider mb-1.5">âœ— Missing Skills ({missingSkills.length})</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {missingSkills.length > 0 ? (
+                              missingSkills.map((s, idx) => (
+                                <span key={idx} className="text-[9px] bg-brand-accent/10 border border-brand-accent/20 text-brand-accent px-2.5 py-0.5 rounded-lg font-medium">{s}</span>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-brand-success font-semibold">Awesome! You possess all required skills for this job.</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {missingSkills.length > 0 && (
+                        <div className="p-4 bg-brand-primary/5 border border-brand-primary/20 rounded-xl space-y-1.5">
+                          <span className="text-[10px] font-extrabold text-brand-primary uppercase tracking-wider block">ðŸ¤– ShortlistIQ AI Advice:</span>
+                          <p className="text-xs text-brand-textSecondary leading-relaxed">
+                            Learning <span className="font-semibold text-brand-textPrimary">{missingSkills.slice(0, 3).join(', ')}</span> would boost your compatibility score by <span className="text-brand-success font-bold">+{Math.round((missingSkills.slice(0, 3).length / selectedJobDetails.skills_required.length) * 50)}%</span>.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Full Job Description */}
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-brand-textPrimary uppercase tracking-wider block">Job Vacancy Description</span>
+                  <p className="text-xs text-brand-textSecondary leading-relaxed whitespace-pre-wrap bg-brand-bg/40 p-4 rounded-xl border border-brand-border/50 max-h-60 overflow-y-auto">
+                    {selectedJobDetails.description}
+                  </p>
+                </div>
+
+                {/* Required Skills list */}
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-brand-textPrimary uppercase tracking-wider block">All Core Requirements</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedJobDetails.skills_required.map((skill, idx) => (
+                      <span key={idx} className="text-xs bg-brand-panelLight border border-brand-border text-brand-textSecondary px-2.5 py-1 rounded-lg font-semibold">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="pt-4 border-t border-brand-border/40 flex justify-end gap-3 shrink-0">
+                <button
+                  onClick={() => {
+                    const id = selectedJobDetails.id;
+                    toggleSaveJob(id);
+                  }}
+                  className={`px-4 py-2.5 text-xs font-bold rounded-xl border transition-all flex items-center gap-1.5 ${
+                    savedJobIds.includes(selectedJobDetails.id)
+                      ? 'bg-brand-secondary/15 border-brand-secondary/35 text-brand-secondary'
+                      : 'bg-brand-panel border-brand-border text-brand-textSecondary hover:text-brand-textPrimary'
+                  }`}
+                >
+                  <Star className="w-4 h-4 fill-current" /> {savedJobIds.includes(selectedJobDetails.id) ? 'Saved' : 'Save Job'}
+                </button>
+                {hasApplied(selectedJobDetails.id) ? (
+                  <button disabled className="bg-brand-border text-brand-textSecondary text-xs font-semibold px-5 py-2.5 rounded-xl cursor-not-allowed">
+                    Application Submitted
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      const job = selectedJobDetails;
+                      setSelectedJobDetails(null);
+                      handleOpenApplyModal(job);
+                    }}
+                    className="bg-gradient-to-r from-brand-primary to-brand-secondary text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-premium hover:opacity-95 transition-all"
+                  >
+                    Apply Now
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* APPLY MODAL */}
       {selectedJob && (
@@ -1265,7 +1540,7 @@ export default function CandidateDashboard() {
                   <div className="space-y-2.5">
                     {previewResume.projects.map((proj, idx) => (
                       <div key={idx} className="bg-brand-bg/40 p-3 rounded-lg border border-brand-border/40 text-xs text-brand-textSecondary leading-relaxed">
-                        • {proj}
+                        â€¢ {proj}
                       </div>
                     ))}
                   </div>

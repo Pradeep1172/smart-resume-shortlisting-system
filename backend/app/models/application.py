@@ -8,7 +8,21 @@ class Application(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey('jobs.id', ondelete='CASCADE'), nullable=False)
     candidate_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     resume_id = db.Column(db.Integer, db.ForeignKey('resumes.id', ondelete='CASCADE'), nullable=False)
-    status = db.Column(db.Enum('applied', 'shortlisted', 'interview', 'rejected', 'approved', name='application_status'), default='applied')
+    status = db.Column(
+        db.Enum(
+            'applied',
+            'pending_evaluation',
+            'evaluated',
+            'shortlisted',
+            'interview',
+            'selected',
+            'hired',
+            'rejected',
+            'approved',  # Backward compatibility
+            name='application_status'
+        ),
+        default='applied'
+    )
     applied_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -30,6 +44,10 @@ class Application(db.Model):
             'id': self.id,
             'job_id': self.job_id,
             'job_title': self.job.title if self.job else None,
+            'recruiter_id': self.job.recruiter_id if self.job else None,
+            'recruiter_name': self.job.recruiter.name if (self.job and self.job.recruiter) else None,
+            'company_name': self.job.recruiter.company if (self.job and self.job.recruiter and self.job.recruiter.company) else (self.job.recruiter.name if (self.job and self.job.recruiter) else None),
+            'company_logo_path': self.job.recruiter.company_logo_path if (self.job and self.job.recruiter) else None,
             'candidate_id': self.candidate_id,
             'candidate_name': self.candidate.name if self.candidate else None,
             'candidate_email': self.candidate.email if self.candidate else None,
@@ -50,7 +68,7 @@ class MatchScore(db.Model):
     match_percentage = db.Column(db.Float, nullable=False)
     ai_score = db.Column(db.Float, nullable=True)
     final_score = db.Column(db.Float, nullable=False)
-    evaluation_type = db.Column(db.Enum('keyword', 'weighted', 'ai', name='evaluation_types'), default='keyword')
+    evaluation_type = db.Column(db.Enum('keyword', 'weighted', 'ai', 'quick', name='evaluation_types'), default='keyword')
     details = db.Column(db.JSON, nullable=True)  # JSON structure containing breakdown details
     calculated_at = db.Column(db.DateTime, default=datetime.utcnow)
 

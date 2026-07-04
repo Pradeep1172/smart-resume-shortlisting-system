@@ -334,3 +334,104 @@ def parse_resume(file_path):
         'experience_years': experience_years,
         'projects': projects
     }
+
+
+def guess_name_from_text_and_filename(text, filename):
+    if text:
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        # Check first 5 lines
+        for line in lines[:5]:
+            # Simple checks: length between 3 and 30, only alphabets and spaces
+            cleaned = re.sub(r'[^a-zA-Z\s]', '', line).strip()
+            words = cleaned.split()
+            if 1 < len(words) <= 4 and not any(w.lower() in ['resume', 'cv', 'curriculum', 'vitae', 'page', 'email', 'phone', 'contact', 'address', 'profile'] for w in words):
+                return cleaned
+    # Fallback to filename
+    base = os.path.splitext(filename)[0]
+    # Replace underscores, hyphens, etc.
+    name = re.sub(r'[_+\-\s]+', ' ', base).strip()
+    # Remove common words like "resume", "cv", "pdf", etc.
+    name = re.sub(r'(?i)\b(resume|cv|pdf|docx|doc|profile|extracted|application)\b', '', name).strip()
+    if not name:
+        name = "External Candidate"
+    return name.title()
+
+
+def parse_external_resume_details(file_path):
+    parsed = parse_resume(file_path)
+    text = parsed.get('extracted_text', '')
+    
+    # Extract Email
+    email = None
+    email_match = re.search(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', text)
+    if email_match:
+        email = email_match.group(0)
+
+    # Extract Phone
+    phone = None
+    phone_match = re.search(r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b|\b\d{10}\b', text)
+    if phone_match:
+        phone = phone_match.group(0)
+
+    # Extract Name
+    name = None
+    api_key = get_gemini_api_key_local()
+    if api_key:
+        import requests
+        import json
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+        prompt = f"""
+        Extract the candidate's full name, email, and phone number from the following resume text.
+        
+        Resume Text:
+        \"\"\"
+        {text}
+        \"\"\"
+        
+        Provide the output in JSON format with exactly these keys:
+        - "name": candidate's full name (string, null if not found)
+        - "email": candidate's email (string, null if not found)
+        - "phone": candidate's phone number (string, null if not found)
+        
+        Do not include markdown tags like ```json. Return ONLY raw JSON text.
+        """
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}]
+        }
+        try:
+            response = requests.post(url, json=payload, timeout=15)
+            response.raise_for_status()
+            res_data = response.json()
+            text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+            
+            if text_response.startswith("```json"):
+                text_response = text_response.split("```json", 1)[1]
+            if text_response.startswith("```"):
+                text_response = text_response.split("```", 1)[1]
+            if text_response.endswith("```"):
+                text_response = text_response.rsplit("```", 1)[0]
+                
+            match = re.search(r'\{.*\}', text_response, re.DOTALL)
+            if match:
+                json_str = match.group(0)
+            else:
+                json_str = text_response
+                
+            ext_json = json.loads(json_str.strip())
+            name = ext_json.get('name')
+            if ext_json.get('email'):
+                email = ext_json.get('email')
+            if ext_json.get('phone'):
+                phone = ext_json.get('phone')
+        except Exception as e:
+            print(f"Gemini name/details extraction failed: {e}")
+
+    # Fallback to local name extraction if not found or Gemini failed
+    if not name:
+        filename = os.path.basename(file_path)
+        name = guess_name_from_text_and_filename(text, filename)
+
+    parsed['name'] = name
+    parsed['email'] = email
+    parsed['phone'] = phone
+    return parsed

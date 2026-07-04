@@ -69,6 +69,14 @@ def ensure_auth_columns():
             additions_jobs.append(f"ALTER TABLE jobs ADD COLUMN pool_analysis {json_type} DEFAULT NULL")
         if "results_generated" not in existing_jobs:
             additions_jobs.append(f"ALTER TABLE jobs ADD COLUMN results_generated {bool_type} DEFAULT 0")
+        if "evaluation_strategy" not in existing_jobs:
+            additions_jobs.append("ALTER TABLE jobs ADD COLUMN evaluation_strategy VARCHAR(20) DEFAULT 'intelligent'")
+        if "scores_outdated" not in existing_jobs:
+            additions_jobs.append(f"ALTER TABLE jobs ADD COLUMN scores_outdated {bool_type} DEFAULT 0")
+        if "evaluated_at" not in existing_jobs:
+            additions_jobs.append("ALTER TABLE jobs ADD COLUMN evaluated_at DATETIME NULL")
+        if "evaluated_by_id" not in existing_jobs:
+            additions_jobs.append("ALTER TABLE jobs ADD COLUMN evaluated_by_id INT NULL")
 
         with db.engine.begin() as conn:
             for stmt in additions_jobs:
@@ -77,4 +85,16 @@ def ensure_auth_columns():
                     print(f"Jobs migration: Executed '{stmt}' successfully.")
                 except Exception as e:
                     print(f"Jobs migration error executing '{stmt}': {e}")
+
+    # --- APPLICATIONS TABLE MIGRATION ---
+    if "applications" in inspector.get_table_names():
+        is_mysql = str(db.engine.url).startswith("mysql")
+        if is_mysql:
+            stmt = "ALTER TABLE applications MODIFY COLUMN status ENUM('applied', 'pending_evaluation', 'evaluated', 'shortlisted', 'interview', 'selected', 'hired', 'rejected', 'approved') DEFAULT 'applied'"
+            with db.engine.begin() as conn:
+                try:
+                    conn.execute(text(stmt))
+                    print("Applications migration: Updated status ENUM successfully.")
+                except Exception as e:
+                    print(f"Applications migration error: {e}")
 

@@ -23,8 +23,13 @@ CREATE TABLE IF NOT EXISTS jobs (
     experience_required INT DEFAULT 0,
     location VARCHAR(100) NULL,
     status ENUM('open', 'closed') DEFAULT 'open',
+    evaluation_strategy VARCHAR(20) DEFAULT 'intelligent',
+    scores_outdated BOOLEAN DEFAULT FALSE,
+    evaluated_at DATETIME NULL,
+    evaluated_by_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (recruiter_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (recruiter_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (evaluated_by_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 3. Resumes Table
@@ -47,7 +52,7 @@ CREATE TABLE IF NOT EXISTS applications (
     job_id INT NOT NULL,
     candidate_id INT NOT NULL,
     resume_id INT NOT NULL,
-    status ENUM('applied', 'shortlisted', 'interview', 'rejected') DEFAULT 'applied',
+    status ENUM('applied', 'pending_evaluation', 'evaluated', 'shortlisted', 'interview', 'selected', 'hired', 'rejected', 'approved') DEFAULT 'applied',
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
     FOREIGN KEY (candidate_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -61,7 +66,7 @@ CREATE TABLE IF NOT EXISTS match_scores (
     match_percentage FLOAT NOT NULL,
     ai_score FLOAT NULL,
     final_score FLOAT NOT NULL,
-    evaluation_type ENUM('keyword', 'weighted', 'ai') DEFAULT 'keyword',
+    evaluation_type ENUM('keyword', 'weighted', 'ai', 'quick') DEFAULT 'keyword',
     details JSON NULL, -- JSON detailing gaps and sub-scores
     calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE

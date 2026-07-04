@@ -1,37 +1,80 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { Mail, MapPin, Globe } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-[#0a0e1a] border-t border-brand-border/40 py-6 mt-auto shrink-0 transition-all">
+    <footer className="w-full bg-[#070b14] border-t border-brand-border/40 pt-16 pb-8 mt-auto shrink-0 transition-all text-xs text-brand-textSecondary">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Brand and Description */}
-          <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="font-extrabold text-sm text-white tracking-tight">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+          
+          {/* Brand Info */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-lg text-white tracking-tight">
                 Shortlist<span className="text-brand-primary">IQ</span>
               </span>
-              <span className="text-[10px] bg-brand-primary/10 text-brand-primary px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
-                ATS Engine
-              </span>
             </div>
-            <p className="text-[11px] text-brand-textSecondary max-w-md font-medium">
-              Academic: Smart Resume Shortlisting System • Powered by Google Gemini AI
+            <p className="text-sm leading-relaxed max-w-xs">
+              An intelligent, AI-powered applicant tracking and resume shortlisting platform designed for modern recruitment.
             </p>
           </div>
 
-          {/* Copyright and compliance */}
-          <div className="flex flex-col items-center md:items-end text-center md:text-right">
-            <div className="flex items-center gap-4 text-xs font-semibold text-brand-textSecondary mb-1.5">
-              <a href="#doc" className="hover:text-white transition-colors">Documentation</a>
-              <span className="w-1 h-1 rounded-full bg-brand-border inline-block"></span>
-              <a href="#privacy" className="hover:text-white transition-colors">Privacy</a>
-              <span className="w-1 h-1 rounded-full bg-brand-border inline-block"></span>
-              <a href="#terms" className="hover:text-white transition-colors">Terms of Service</a>
-            </div>
-            <p className="text-[10px] text-brand-textSecondary">
-              &copy; {new Date().getFullYear()} ShortlistIQ. All rights reserved.
-            </p>
+          {/* Quick Links */}
+          <div>
+            <h4 className="font-bold text-white mb-4 text-[11px] uppercase tracking-wider">Quick Links</h4>
+            <ul className="space-y-3 font-medium text-sm">
+              <li><Link to="/register?role=candidate" className="hover:text-brand-primary transition-colors">Find Jobs</Link></li>
+              <li><Link to="/register?role=recruiter" className="hover:text-brand-primary transition-colors">Post a Job</Link></li>
+              <li><a href="/#features" className="hover:text-brand-primary transition-colors">Features</a></li>
+              <li><a href="/#about" className="hover:text-brand-primary transition-colors">How It Works</a></li>
+            </ul>
+          </div>
+
+          {/* About */}
+          <div>
+            <h4 className="font-bold text-white mb-4 text-[11px] uppercase tracking-wider">About</h4>
+            <ul className="space-y-3 font-medium text-sm">
+              <li><a href="/#about" className="hover:text-brand-primary transition-colors">Our Story</a></li>
+              <li><a href="/#features" className="hover:text-brand-primary transition-colors">Technology</a></li>
+              <li><a href="/#contact" className="hover:text-brand-primary transition-colors">Help Center</a></li>
+            </ul>
+          </div>
+
+          {/* Contact & Socials */}
+          <div>
+            <h4 className="font-bold text-white mb-4 text-[11px] uppercase tracking-wider">Connect</h4>
+            <ul className="space-y-3 font-medium text-sm">
+              <li className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-brand-primary" />
+                <a href="mailto:support@shortlistiq.com" className="hover:text-white transition-colors">support@shortlistiq.com</a>
+              </li>
+              <li className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-brand-primary" />
+                <a href="https://shortlistiq.com" className="hover:text-white transition-colors">www.shortlistiq.com</a>
+              </li>
+              <li className="flex items-center gap-2 mt-4 pt-4 border-t border-brand-border/20">
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-2">
+                  <svg xmlns="http://www.3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                  GitHub
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-2">
+                  <svg xmlns="http://www.3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                  LinkedIn
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom Line */}
+        <div className="pt-8 border-t border-brand-border/20 flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+          <p>&copy; {new Date().getFullYear()} ShortlistIQ. All rights reserved.</p>
+          <div className="flex gap-6 font-semibold">
+            <a href="#privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+            <a href="#terms" className="hover:text-white transition-colors">Terms &amp; Conditions</a>
           </div>
         </div>
       </div>

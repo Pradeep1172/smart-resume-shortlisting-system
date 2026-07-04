@@ -1,6 +1,25 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, XCircle, FileText, ClipboardList, MapPin, Award, Clock } from 'lucide-react';
+import { 
+  CheckCircle, 
+  XCircle, 
+  FileText, 
+  ClipboardList, 
+  MapPin, 
+  Award, 
+  Clock, 
+  User, 
+  Briefcase, 
+  Calendar, 
+  Compass, 
+  ShieldAlert, 
+  Sparkles, 
+  TrendingUp, 
+  Cpu, 
+  Bell, 
+  Activity,
+  ArrowRight
+} from 'lucide-react';
 
 /**
  * CandidateDashboardHome
@@ -40,23 +59,52 @@ export default function CandidateDashboardHome({
 
   const resumeStrengthValue = resumeIsValid ? (dashboardInsights?.resume_strength ?? null) : null;
   const atsCompatibilityValue = resumeIsValid ? (dashboardInsights?.ats_compatibility ?? null) : null;
-  const jobMatchesValue = resumeIsValid && dashboardInsights?.recommended_jobs?.length
-    ? Math.round(dashboardInsights.recommended_jobs.reduce((acc, curr) => acc + curr.match_score, 0) / dashboardInsights.recommended_jobs.length)
-    : null;
+  const profileScoreValue = dashboardInsights?.profile_score ?? pc;
+  const jobMatchesValue = resumeIsValid ? (dashboardInsights?.job_matches ?? null) : null;
+
+  const getResumeStrengthNote = (val) => {
+    if (val === null) return hasResume ? 'Could not parse resume text' : 'Upload a resume to unlock';
+    if (val >= 85) return 'Excellent — resume content is very strong';
+    if (val >= 70) return 'Good — resume content is solid';
+    if (val >= 50) return 'Fair — consider adding projects or experience';
+    return 'Weak — content needs improvement';
+  };
+
+  const getAtsCompatibilityNote = (val) => {
+    if (val === null) return hasResume ? 'N/A — resume not parseable' : 'Upload a resume to unlock';
+    if (val >= 85) return 'Excellent ATS format and readability';
+    if (val >= 70) return 'Good ATS keyword density and structure';
+    if (val >= 50) return 'Fair ATS format — optimize section structure';
+    return 'Poor ATS readability — check formatting';
+  };
+
+  const getProfileScoreNote = (val) => {
+    if (val >= 85) return 'Superb — highly complete profile & verified details';
+    if (val >= 70) return 'Good — profile is mostly complete';
+    if (val >= 50) return 'Fair — add more portfolio/social links';
+    return 'Awaiting completion — update profile details';
+  };
+
+  const getJobMatchesNote = (val) => {
+    if (val === null) return hasResume ? 'N/A — resume required for matching' : 'Upload a resume for job matching';
+    if (val >= 80) return 'Outstanding alignment across applied jobs';
+    if (val >= 60) return 'Good alignment — matched most key skills';
+    return 'Moderate alignment — look for roles matching your tech stack';
+  };
 
   const aiScores = [
-    { label: 'Resume Strength',   value: resumeStrengthValue,   color: resumeIsValid ? '#6366f1' : '#475569', note: resumeIsValid ? 'Good — add more skills' : hasResume ? 'Could not parse resume text' : 'Upload a resume to unlock', emoji: '📄' },
-    { label: 'ATS Compatibility', value: atsCompatibilityValue, color: resumeIsValid ? '#8b5cf6' : '#475569', note: resumeIsValid ? 'Excellent ATS readability'       : hasResume ? 'N/A — resume not parseable'     : 'Upload a resume to unlock', emoji: '⚙️' },
-    { label: 'Profile Score',     value: pc,                    color: '#06b6d4',                            note: pc < 100 ? 'Add more details to rank higher' : 'Profile is complete!',                                                                    emoji: '👤' },
-    { label: 'Job Matches',       value: jobMatchesValue,       color: resumeIsValid ? '#10b981' : '#475569', note: resumeIsValid ? `Average alignment across ${jobs.length} jobs` : hasResume ? 'N/A — resume required for matching' : 'Upload a resume for job matching', emoji: '🎯' },
+    { label: 'Resume Strength',   value: resumeStrengthValue,   color: resumeIsValid ? '#6366f1' : '#475569', note: getResumeStrengthNote(resumeStrengthValue), emoji: '📄' },
+    { label: 'ATS Compatibility', value: atsCompatibilityValue, color: resumeIsValid ? '#8b5cf6' : '#475569', note: getAtsCompatibilityNote(atsCompatibilityValue), emoji: '⚙️' },
+    { label: 'Profile Score',     value: profileScoreValue,     color: '#06b6d4',                            note: getProfileScoreNote(profileScoreValue), emoji: '👤' },
+    { label: 'Job Matches',       value: jobMatchesValue,       color: resumeIsValid ? '#10b981' : '#475569', note: getJobMatchesNote(jobMatchesValue), emoji: '🎯' },
   ];
 
-  /* Stat cards */
+  /* Stat cards with Lucide Icons */
   const metrics = [
-    { label: 'Profile Score',          value: `${pc}%`,      sub: pc < 100 ? 'Incomplete' : 'Complete',    icon: '👤', color: 'text-brand-primary',   glow: 'from-brand-primary/20',   to: '/profile'      },
-    { label: 'Matching Jobs',           value: jobs.length,   sub: 'Open positions',                        icon: '🎯', color: 'text-brand-secondary',  glow: 'from-brand-secondary/20', to: '/jobs'         },
-    { label: 'Applications Sent',       value: applications.length, sub: `${applications.filter(a => ['shortlisted','approved'].includes(a.status)).length} shortlisted`, icon: '📋', color: 'text-brand-accent', glow: 'from-brand-accent/20', to: '/applications' },
-    { label: 'Interview Invitations',   value: applications.filter(a => a.status === 'interview').length, sub: 'Scheduled', icon: '🗓️', color: 'text-brand-warning', glow: 'from-brand-warning/20', to: '/tracking' },
+    { label: 'Profile Score',          value: `${pc}%`,      sub: pc < 100 ? 'Incomplete' : 'Complete',    icon: User, color: 'text-brand-primary', bgIcon: 'bg-brand-primary/10',   glow: 'from-brand-primary/5',   to: '/profile'      },
+    { label: 'Matching Jobs',           value: jobs.length,   sub: 'Open positions',                        icon: Compass, color: 'text-brand-secondary', bgIcon: 'bg-brand-secondary/10',  glow: 'from-brand-secondary/5', to: '/jobs'         },
+    { label: 'Applications Sent',       value: applications.length, sub: `${applications.filter(a => ['shortlisted','interview','selected','approved','hired'].includes(a.status)).length} shortlisted`, icon: ClipboardList, color: 'text-brand-accent', bgIcon: 'bg-brand-accent/10', glow: 'from-brand-accent/5', to: '/applications' },
+    { label: 'Interview Invitations',   value: applications.filter(a => a.status === 'interview').length, sub: 'Scheduled', icon: Calendar, color: 'text-brand-warning', bgIcon: 'bg-brand-warning/10', glow: 'from-brand-warning/5', to: '/tracking' },
   ];
 
   /* Activity feed entries */
@@ -111,37 +159,60 @@ export default function CandidateDashboardHome({
         </div>
       </div>
 
+      {/* ── Improve Your Resume Call to Action ─────────────────────────── */}
+      <div className="glass-panel border border-brand-primary/20 rounded-2xl p-5 relative overflow-hidden bg-gradient-to-r from-brand-primary/5 via-brand-secondary/5 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-primary/15 border border-brand-primary/25 flex items-center justify-center text-brand-primary shrink-0">
+            <Sparkles className="w-5 h-5 text-brand-primary animate-pulse" />
+          </div>
+          <div>
+            <h3 className="text-sm font-extrabold text-brand-textPrimary">Boost Your Resume's Hiring Potential</h3>
+            <p className="text-[11px] text-brand-textSecondary mt-0.5">Use our brand-new AI Career Coach to identify missing keywords, scan layout defects, and match your target job profile.</p>
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/improve-resume')}
+          className="bg-brand-primary hover:bg-brand-primary/95 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-premium hover:-translate-y-0.5 transition-all shrink-0 flex items-center gap-1.5"
+        >
+          Coach Optimization Report <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
       {/* ── Metric Cards ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((m, i) => (
-          <button
-            key={i}
-            onClick={() => navigate(m.to)}
-            className={`glass-panel border border-brand-border/60 rounded-2xl p-5 hover:border-white/10 transition-all duration-300 shadow-premium text-left bg-gradient-to-br ${m.glow} to-transparent hover:-translate-y-0.5`}
-          >
-            <div className="flex items-start justify-between">
-              <span className="text-[10px] font-bold text-brand-textSecondary uppercase tracking-widest leading-tight">{m.label}</span>
-              <span className="text-lg">{m.icon}</span>
-            </div>
-            <span className={`text-3xl font-extrabold ${m.color} mt-2 block`}>{m.value}</span>
-            <span className="text-[10px] text-brand-textSecondary mt-1 block">{m.sub}</span>
-          </button>
-        ))}
+        {metrics.map((m, i) => {
+          const Icon = m.icon;
+          return (
+            <button
+              key={i}
+              onClick={() => navigate(m.to)}
+              className={`glass-panel border border-brand-border/60 rounded-2xl p-5 hover:border-brand-primary/25 transition-all duration-300 shadow-premium text-left bg-gradient-to-br ${m.glow} to-transparent hover:-translate-y-1 btn-pressable`}
+            >
+              <div className="flex items-start justify-between">
+                <span className="text-[10px] font-bold text-brand-textSecondary uppercase tracking-widest leading-tight">{m.label}</span>
+                <span className={`p-2 rounded-xl ${m.bgIcon} ${m.color}`}><Icon className="w-4 h-4 shrink-0" /></span>
+              </div>
+              <span className={`text-3xl font-extrabold text-brand-textPrimary mt-3 block`}>{m.value}</span>
+              <span className="text-[10px] text-brand-textSecondary mt-1 block font-semibold">{m.sub}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ── AI Insights + Activity ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* AI Career Insights */}
-        <div className="lg:col-span-2 glass-panel border border-brand-primary/30 rounded-2xl p-6 relative overflow-hidden">
+        <div className="lg:col-span-2 glass-panel border border-brand-primary/20 rounded-2xl p-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 rounded-full blur-[80px] pointer-events-none" />
 
           <div className="flex items-center gap-2 mb-5">
             <div className="flex items-center gap-1.5 bg-brand-primary/10 border border-brand-primary/20 rounded-lg px-2.5 py-1">
-              <span className="text-sm">🤖</span>
-              <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">AI Career Insights</span>
+              <Sparkles className="w-4 h-4 text-brand-primary" />
+              <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Personalized AI Career Insights</span>
             </div>
-            <span className="text-[10px] text-brand-textSecondary ml-auto">Powered by ShortlistIQ AI</span>
+            <span className="text-[10px] text-brand-textSecondary ml-auto">Generated from Resume & Profile Analysis</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -149,14 +220,14 @@ export default function CandidateDashboardHome({
               // Profile Score always has a real value; others may be null
               const isNA = item.value === null;
               const displayValue = isNA ? 'N/A' : `${item.value}%`;
-              const ringColor = isNA ? '#334155' : item.color;
+              const ringColor = isNA ? '#94A3B8' : item.color;
               const r = 28, circ = 2 * Math.PI * r;
               const dash = isNA ? 0 : ((item.value / 100) * circ).toFixed(1);
               return (
                 <div key={i} className="bg-brand-bg/50 border border-brand-border/50 rounded-xl p-4 flex items-center gap-4 hover:border-brand-primary/30 transition-all">
                   <div className="relative shrink-0">
                     <svg width="68" height="68" viewBox="0 0 68 68">
-                      <circle cx="34" cy="34" r={r} fill="none" stroke="#1e1b4b" strokeWidth="5" />
+                      <circle cx="34" cy="34" r={r} fill="none" stroke="#E2E8F0" strokeWidth="5" />
                       <circle
                         cx="34" cy="34" r={r} fill="none"
                         stroke={ringColor} strokeWidth="5"
@@ -192,7 +263,7 @@ export default function CandidateDashboardHome({
 
           {/* Warning banner — no resume OR insufficient parse */}
           {!hasResume && (
-            <div className="mt-4 bg-brand-warning/10 border border-brand-warning/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="mt-4 bg-brand-warning/10 border border-brand-warning/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-fade-in">
               <div className="flex items-center gap-2">
                 <span className="text-base">⚠️</span>
                 <span className="text-xs text-brand-warning font-semibold">Upload a resume to unlock AI analysis</span>
@@ -203,7 +274,7 @@ export default function CandidateDashboardHome({
             </div>
           )}
           {hasResume && !resumeIsValid && (
-            <div className="mt-4 bg-brand-danger/10 border border-brand-danger/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="mt-4 bg-brand-danger/10 border border-brand-danger/20 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-fade-in">
               <div className="flex items-center gap-2">
                 <span className="text-base">❌</span>
                 <div>
@@ -221,7 +292,7 @@ export default function CandidateDashboardHome({
         {/* Recent Activity */}
         <div className="glass-panel border border-brand-border/60 rounded-2xl p-6">
           <h3 className="font-bold text-brand-textPrimary text-sm mb-4 flex items-center gap-2">
-            <span className="text-base">⚡</span> Recent Activity
+            <Activity className="w-4.5 h-4.5 text-brand-accent" /> Recent Activity
           </h3>
           {activity.length === 0 ? (
             <div className="text-center py-8 text-brand-textSecondary text-xs">

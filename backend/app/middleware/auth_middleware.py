@@ -30,6 +30,17 @@ def token_required(f):
             current_user = User.query.filter_by(id=data['user_id']).first()
             if not current_user:
                 return jsonify({'message': 'User not found!'}), 401
+            
+            # If user must change password, block other API endpoints
+            if current_user.must_change_password:
+                allowed_paths = ['/api/auth/change-password', '/api/auth/me']
+                normalized_path = request.path.rstrip('/')
+                if normalized_path not in allowed_paths:
+                    return jsonify({
+                        'message': 'You must change your temporary password before accessing the system.',
+                        'must_change_password': True
+                    }), 403
+            
             g.user = current_user
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token has expired. Please log in again.'}), 401
