@@ -47,11 +47,11 @@ export default function Footer() {
             <ul className="space-y-3 font-medium text-sm">
               <li className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-brand-primary" />
-                <a href="mailto:support@shortlistiq.com" className="hover:text-white transition-colors">support@shortlistiq.com</a>
+                <a href="mailto:shortlistiq.official@gmail.com" className="hover:text-white transition-colors">shortlistiq.official@gmail.com</a>
               </li>
               <li className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-brand-primary" />
-                <a href="https://shortlistiq.com" className="hover:text-white transition-colors">www.shortlistiq.com</a>
+                <a href="https://shortlistiq-dev.vercel.app" className="hover:text-white transition-colors">https://shortlistiq-dev.vercel.app</a>
               </li>
               <li className="flex items-center gap-2 mt-4 pt-4 border-t border-brand-border/20">
                 <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-2">

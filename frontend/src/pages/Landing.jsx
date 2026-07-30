@@ -35,13 +35,15 @@ import {
   Layout,
   User,
   Activity,
-  UserPlus
+  UserPlus,
+  Lock
 } from 'lucide-react';
 
 const benefitPhrases = [
-  "Discover jobs that match your skills",
-  "Improve your ATS/resume score before applying",
-  "Track every application until you get hired"
+  "Improve your ATS Resume Score",
+  "Find jobs that match your skills",
+  "Track all applications",
+  "Get AI-powered recommendations"
 ];
 
 const CountUpScore = ({ target = 92 }) => {
@@ -908,7 +910,7 @@ export default function Landing() {
                 onClick={() => scrollToSection('recruiters-section')}
                 className="group w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-slate-200 hover:border-brand-primary text-slate-700 hover:text-slate-900 font-black px-8 py-4 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 btn-pressable"
               >
-                I’m Hiring Talent
+                I'm Hiring Talent
               </button>
             </motion.div>
 
@@ -1371,8 +1373,8 @@ export default function Landing() {
                   </div>
                   <div>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Email Support</p>
-                    <a href="mailto:support@shortlistiq.com" className="text-xs font-extrabold text-slate-700 hover:text-brand-primary transition-colors">
-                      support@shortlistiq.com
+                    <a href="mailto:shortlistiq.official@gmail.com" className="text-xs font-extrabold text-slate-700 hover:text-brand-primary transition-colors">
+                      shortlistiq.official@gmail.com
                     </a>
                   </div>
                 </div>
@@ -1383,8 +1385,8 @@ export default function Landing() {
                   </div>
                   <div>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Official Website</p>
-                    <a href="https://www.shortlistiq.com" target="_blank" rel="noreferrer" className="text-xs font-extrabold text-slate-700 hover:text-brand-secondary transition-colors">
-                      www.shortlistiq.com
+                    <a href="https://shortlistiq-dev.vercel.app" target="_blank" rel="noreferrer" className="text-xs font-extrabold text-slate-700 hover:text-brand-secondary transition-colors">
+                      https://shortlistiq-dev.vercel.app
                     </a>
                   </div>
                 </div>

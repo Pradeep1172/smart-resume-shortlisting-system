@@ -33,10 +33,9 @@ def run_system_tests():
 
         # 2. Test All 3 Evaluation Types
         print("\n[2] Testing Evaluation Scoring Engines (Keyword, Weighted, Gemini AI)...")
-        # Let's find one resume and one job for testing
-        test_job_kw = Job.query.filter_by(evaluation_type='keyword').first()
-        test_job_wt = Job.query.filter_by(evaluation_type='weighted').first()
-        test_job_ai = Job.query.filter_by(evaluation_type='ai').first()
+        test_job_kw = Job.query.filter_by(evaluation_type='keyword').first() or Job.query.first()
+        test_job_wt = Job.query.filter_by(evaluation_type='weighted').first() or Job.query.first()
+        test_job_ai = Job.query.filter_by(evaluation_type='ai').first() or Job.query.first()
         test_resume = Resume.query.first()
         
         # Keyword evaluation

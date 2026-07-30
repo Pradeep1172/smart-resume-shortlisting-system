@@ -261,6 +261,13 @@ def seed_comprehensive():
                 
                 # Only pre-calculate score for jobs 1 and 2, leave job 0 unevaluated
                 if idx > 0:
+                    application.status = "evaluated"
+                    
+                    # Update job evaluation metadata
+                    job.evaluation_status = "evaluated"
+                    job.evaluated_at = datetime.utcnow()
+                    job.evaluated_by_id = recruiter.id
+                    
                     match_data = calculate_match_score(resume, job, eval_type=job.evaluation_type)
                     
                     score_record = MatchScore(
