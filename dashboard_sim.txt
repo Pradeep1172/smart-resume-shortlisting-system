@@ -1,0 +1,238 @@
+﻿
+> diff_history_utf8.txt:87:+function DashboardSimulator({ activeStage, onStageClick }) {
+  diff_history_utf8.txt:88:+  const [loading, setLoading] = useState(true);
+  diff_history_utf8.txt:89:+
+  diff_history_utf8.txt:90:+  useEffect(() => {
+  diff_history_utf8.txt:91:+    setLoading(true);
+  diff_history_utf8.txt:92:+    const timer = setTimeout(() => setLoading(false), 700);
+  diff_history_utf8.txt:93:+    return () => clearTimeout(timer);
+  diff_history_utf8.txt:94:+  }, [activeStage]);
+  diff_history_utf8.txt:95:+
+  diff_history_utf8.txt:96:+  return (
+  diff_history_utf8.txt:97:+    <div className="relative w-full max-w-md bg-slate-900 text-white rounded-3xl p-5 
+shadow-2xl space-y-4 border border-slate-800/80 overflow-hidden select-none hover:-translate-y-1 
+hover:shadow-brand-primary/10 transition-all duration-300">
+  diff_history_utf8.txt:98:+      {/* Top bar */}
+  diff_history_utf8.txt:99:+      <div className="flex justify-between items-center pb-3 border-b border-slate-850 
+text-[10px] font-bold text-slate-450">
+  diff_history_utf8.txt:100:+        <div className="flex items-center gap-2">
+  diff_history_utf8.txt:101:+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+  diff_history_utf8.txt:102:+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+  diff_history_utf8.txt:103:+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+  diff_history_utf8.txt:104:+          <span className="ml-1 text-slate-350 font-extrabold font-sans">Workspace 
+Preview</span>
+  diff_history_utf8.txt:105:+        </div>
+  diff_history_utf8.txt:106:+        <span className="text-brand-secondary text-[8px] tracking-widest uppercase">Live 
+Demo</span>
+  diff_history_utf8.txt:107:+      </div>
+  diff_history_utf8.txt:108:+
+  diff_history_utf8.txt:109:+      <div className="grid grid-cols-12 gap-3 min-h-[220px]">
+  diff_history_utf8.txt:110:+        {/* Sidebar */}
+  diff_history_utf8.txt:111:+        <div className="col-span-3 border-r border-slate-800/80 pr-2.5 space-y-2.5 
+text-[8.5px] font-bold text-slate-450">
+  diff_history_utf8.txt:112:+          {[
+  diff_history_utf8.txt:113:+            { id: 0, label: "Profile", icon: User },
+  diff_history_utf8.txt:114:+            { id: 1, label: "Resume", icon: UploadCloud },
+  diff_history_utf8.txt:115:+            { id: 2, label: "Match Score", icon: Brain },
+  diff_history_utf8.txt:116:+            { id: 3, label: "Tracker", icon: Activity }
+  diff_history_utf8.txt:117:+          ].map(tab => {
+  diff_history_utf8.txt:118:+            const Icon = tab.icon;
+  diff_history_utf8.txt:119:+            return (
+  diff_history_utf8.txt:120:+              <button
+  diff_history_utf8.txt:121:+                key={tab.id}
+  diff_history_utf8.txt:122:+                onClick={() => onStageClick(tab.id)}
+  diff_history_utf8.txt:123:+                className={`w-full text-left p-2 rounded-xl flex items-center gap-1.5 
+transition-all duration-305 ${
+  diff_history_utf8.txt:124:+                  activeStage === tab.id 
+  diff_history_utf8.txt:125:+                    ? 'bg-brand-primary text-white shadow-md scale-[1.04]' 
+  diff_history_utf8.txt:126:+                    : 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-200'
+  diff_history_utf8.txt:127:+                }`}
+  diff_history_utf8.txt:128:+              >
+  diff_history_utf8.txt:129:+                <Icon className="w-3.5 h-3.5" />
+  diff_history_utf8.txt:130:+                {tab.label}
+  diff_history_utf8.txt:131:+              </button>
+  diff_history_utf8.txt:132:+            );
+  diff_history_utf8.txt:133:+          })}
+  diff_history_utf8.txt:134:+        </div>
+  diff_history_utf8.txt:135:+
+  diff_history_utf8.txt:136:+        {/* Workspace panel */}
+  diff_history_utf8.txt:137:+        <div className="col-span-9 pl-2 flex flex-col justify-between">
+  diff_history_utf8.txt:138:+          <AnimatePresence mode="wait">
+  diff_history_utf8.txt:139:+            {loading ? (
+  diff_history_utf8.txt:140:+              <motion.div
+  diff_history_utf8.txt:141:+                key="loading-skeleton"
+  diff_history_utf8.txt:142:+                initial={{ opacity: 0 }}
+  diff_history_utf8.txt:143:+                animate={{ opacity: 1 }}
+  diff_history_utf8.txt:144:+                exit={{ opacity: 0 }}
+  diff_history_utf8.txt:145:+                className="space-y-4 text-left py-2"
+  diff_history_utf8.txt:146:+              >
+  diff_history_utf8.txt:147:+                <div className="h-3 bg-slate-800 rounded-md w-1/3 animate-pulse" />
+  diff_history_utf8.txt:148:+                <div className="bg-slate-850 p-4 rounded-xl border border-slate-800 
+space-y-3">
+  diff_history_utf8.txt:149:+                  <div className="flex items-center gap-3">
+  diff_history_utf8.txt:150:+                    <div className="w-8 h-8 bg-slate-750 rounded-full animate-pulse" />
+  diff_history_utf8.txt:151:+                    <div className="space-y-1.5 flex-1">
+  diff_history_utf8.txt:152:+                      <div className="h-2.5 bg-slate-750 rounded w-3/4 animate-pulse" />
+  diff_history_utf8.txt:153:+                      <div className="h-2 bg-slate-750 rounded w-1/2 animate-pulse" />
+  diff_history_utf8.txt:154:+                    </div>
+  diff_history_utf8.txt:155:+                  </div>
+  diff_history_utf8.txt:156:+                  <div className="h-2 bg-slate-750 rounded w-5/6 animate-pulse" />
+  diff_history_utf8.txt:157:+                </div>
+  diff_history_utf8.txt:158:+              </motion.div>
+  diff_history_utf8.txt:159:+            ) : (
+  diff_history_utf8.txt:160:+              <motion.div
+  diff_history_utf8.txt:161:+                key={`stage-${activeStage}`}
+  diff_history_utf8.txt:162:+                initial={{ opacity: 0, y: 12 }}
+  diff_history_utf8.txt:163:+                animate={{ opacity: 1, y: 0 }}
+  diff_history_utf8.txt:164:+                exit={{ opacity: 0, y: -12 }}
+  diff_history_utf8.txt:165:+                transition={{ duration: 0.3, ease: "easeOut" }}
+  diff_history_utf8.txt:166:+                className="space-y-3 text-left"
+  diff_history_utf8.txt:167:+              >
+  diff_history_utf8.txt:168:+                {activeStage === 0 && (
+  diff_history_utf8.txt:169:+                  <>
+  diff_history_utf8.txt:170:+                    <div className="text-[9px] font-black text-slate-450 uppercase 
+tracking-wider">Step 1: Create Account</div>
+  diff_history_utf8.txt:171:+                    <div className="bg-slate-800/80 p-3.5 rounded-2xl border 
+border-slate-700/50 space-y-3 shadow-lg hover:border-brand-primary/45 transition-colors duration-300">
+  diff_history_utf8.txt:172:+                      <div className="flex items-center gap-2.5">
+  diff_history_utf8.txt:173:+                        <div className="w-8 h-8 bg-gradient-to-tr from-brand-primary 
+to-brand-secondary rounded-full flex items-center justify-center font-bold text-white text-xs">
+  diff_history_utf8.txt:174:+                          PR
+  diff_history_utf8.txt:175:+                        </div>
+  diff_history_utf8.txt:176:+                        <div>
+  diff_history_utf8.txt:177:+                          <div className="font-extrabold text-[11.5px] text-white 
+font-sans">Priya Reddy</div>
+  diff_history_utf8.txt:178:+                          <div className="text-[8.5px] text-slate-400">Software 
+Developer</div>
+  diff_history_utf8.txt:179:+                        </div>
+  diff_history_utf8.txt:180:+                      </div>
+  diff_history_utf8.txt:181:+                      <div className="text-[9.5px] text-emerald-450 font-bold flex 
+items-center gap-1.5 bg-emerald-950/35 p-1.5 rounded-xl border border-emerald-900/40">
+  diff_history_utf8.txt:182:+                        <Check className="w-3.5 h-3.5 text-emerald-450" /> Account Created
+  diff_history_utf8.txt:183:+                      </div>
+  diff_history_utf8.txt:184:+                    </div>
+  diff_history_utf8.txt:185:+                  </>
+  diff_history_utf8.txt:186:+                )}
+  diff_history_utf8.txt:187:+
+  diff_history_utf8.txt:188:+                {activeStage === 1 && (
+  diff_history_utf8.txt:189:+                  <>
+  diff_history_utf8.txt:190:+                    <div className="text-[9px] font-black text-slate-455 uppercase 
+tracking-wider">Step 2: Upload Resume</div>
+  diff_history_utf8.txt:191:+                    <div className="bg-slate-800/80 p-3.5 rounded-2xl border 
+border-slate-700/50 space-y-3 shadow-lg hover:border-brand-primary/45 transition-colors duration-300">
+  diff_history_utf8.txt:192:+                      <div className="flex items-center justify-between text-[9px] 
+font-bold text-slate-350">
+  diff_history_utf8.txt:193:+                        <span className="flex items-center gap-1 font-sans"><FileText 
+className="w-3.5 h-3.5 text-brand-secondary" /> priya_resume.pdf</span>
+  diff_history_utf8.txt:194:+                        <span className="text-brand-secondary font-black">15 Skills 
+Found</span>
+  diff_history_utf8.txt:195:+                      </div>
+  diff_history_utf8.txt:196:+                      <div className="w-full bg-slate-700 h-1.5 rounded-full 
+overflow-hidden">
+  diff_history_utf8.txt:197:+                        <motion.div 
+  diff_history_utf8.txt:198:+                          initial={{ width: 0 }} 
+  diff_history_utf8.txt:199:+                          animate={{ width: "100%" }} 
+  diff_history_utf8.txt:200:+                          transition={{ duration: 1.0, ease: "easeInOut" }} 
+  diff_history_utf8.txt:201:+                          className="bg-brand-secondary h-full rounded-full" 
+  diff_history_utf8.txt:202:+                        />
+  diff_history_utf8.txt:203:+                      </div>
+  diff_history_utf8.txt:204:+                      <div className="text-[8.5px] text-slate-400 font-medium">
+  diff_history_utf8.txt:205:+                        Skills parsed: <span className="text-white 
+font-extrabold">Python, FastAPI, SQL, Docker</span>
+  diff_history_utf8.txt:206:+                      </div>
+  diff_history_utf8.txt:207:+                    </div>
+  diff_history_utf8.txt:208:+                  </>
+  diff_history_utf8.txt:209:+                )}
+  diff_history_utf8.txt:210:+
+  diff_history_utf8.txt:211:+                {activeStage === 2 && (
+  diff_history_utf8.txt:212:+                  <>
+  diff_history_utf8.txt:213:+                    <div className="text-[9px] font-black text-slate-455 uppercase 
+tracking-wider">Step 3: Analyze Matching</div>
+  diff_history_utf8.txt:214:+                    <div className="bg-slate-800/80 p-3.5 rounded-2xl border 
+border-slate-700/50 space-y-3 shadow-lg hover:border-brand-primary/45 transition-colors duration-300">
+  diff_history_utf8.txt:215:+                      <div className="flex justify-between text-[10px] font-extrabold 
+text-white">
+  diff_history_utf8.txt:216:+                        <span>Backend Dev Match</span>
+  diff_history_utf8.txt:217:+                        <span className="text-brand-primary font-black"><CountUpScore 
+target={92} /></span>
+  diff_history_utf8.txt:218:+                      </div>
+  diff_history_utf8.txt:219:+                      <div className="w-full bg-slate-700 h-2 rounded-full 
+overflow-hidden">
+  diff_history_utf8.txt:220:+                        <motion.div 
+  diff_history_utf8.txt:221:+                          initial={{ width: 0 }} 
+  diff_history_utf8.txt:222:+                          animate={{ width: "92%" }} 
+  diff_history_utf8.txt:223:+                          transition={{ duration: 1.1, ease: "easeOut" }} 
+  diff_history_utf8.txt:224:+                          className="bg-brand-primary h-full rounded-full" 
+  diff_history_utf8.txt:225:+                        />
+  diff_history_utf8.txt:226:+                      </div>
+  diff_history_utf8.txt:227:+                      <div className="text-[8.5px] text-emerald-450 font-bold 
+bg-emerald-950/45 p-1.5 rounded-xl border border-emerald-900/50 text-center">
+  diff_history_utf8.txt:228:+                        Γ£ô Excellent fit for core database requirements
+  diff_history_utf8.txt:229:+                      </div>
+  diff_history_utf8.txt:230:+                    </div>
+  diff_history_utf8.txt:231:+                  </>
+  diff_history_utf8.txt:232:+                )}
+  diff_history_utf8.txt:233:+
+  diff_history_utf8.txt:234:+                {activeStage === 3 && (
+  diff_history_utf8.txt:235:+                  <>
+  diff_history_utf8.txt:236:+                    <div className="text-[9px] font-black text-slate-455 uppercase 
+tracking-wider">Step 4: Application Track</div>
+  diff_history_utf8.txt:237:+                    <div className="bg-slate-800/80 p-3.5 rounded-2xl border 
+border-slate-700/50 space-y-3.5 shadow-lg hover:border-brand-primary/45 transition-colors duration-300">
+  diff_history_utf8.txt:238:+                      <div className="flex justify-between items-center">
+  diff_history_utf8.txt:239:+                        <div>
+  diff_history_utf8.txt:240:+                          <div className="font-extrabold text-[11px] text-white 
+font-sans">Saanvika Software</div>
+  diff_history_utf8.txt:241:+                          <div className="text-[8px] text-slate-400 font-medium">Applied 
+2 days ago</div>
+  diff_history_utf8.txt:242:+                        </div>
+  diff_history_utf8.txt:243:+                        <span className="text-[8px] bg-emerald-600 text-white px-2 py-0.5 
+rounded-lg font-black animate-bounce">HIRED ≡ƒÄë</span>
+  diff_history_utf8.txt:244:+                      </div>
+  diff_history_utf8.txt:245:+                      
+  diff_history_utf8.txt:246:+                      <div className="flex justify-between items-center text-[7.5px] 
+font-extrabold text-slate-450 border-t border-slate-700/80 pt-2.5">
+  diff_history_utf8.txt:247:+                        <span className="text-slate-350">1. Applied Γ£ô</span>
+  diff_history_utf8.txt:248:+                        <span className="text-slate-350">2. Interview Γ£ô</span>
+  diff_history_utf8.txt:249:+                        <span className="text-emerald-450 font-black">3. Hired ΓùÅ</span>
+  diff_history_utf8.txt:250:+                      </div>
+  diff_history_utf8.txt:251:+                    </div>
+  diff_history_utf8.txt:252:+                  </>
+  diff_history_utf8.txt:253:+                )}
+  diff_history_utf8.txt:254:+              </motion.div>
+  diff_history_utf8.txt:255:+            )}
+  diff_history_utf8.txt:256:+          </AnimatePresence>
+  diff_history_utf8.txt:257:+
+  diff_history_utf8.txt:258:+          <div className="text-slate-500 text-[8.5px] font-bold mt-2 pt-2 border-t 
+border-slate-800/80 text-center">
+  diff_history_utf8.txt:259:+            Click sidebar elements to override stages
+  diff_history_utf8.txt:260:+          </div>
+  diff_history_utf8.txt:261:+        </div>
+  diff_history_utf8.txt:262:+      </div>
+  diff_history_utf8.txt:263:+    </div>
+  diff_history_utf8.txt:264:+  );
+  diff_history_utf8.txt:265:+}
+  diff_history_utf8.txt:266:+
+  diff_history_utf8.txt:267:+function TypewriterText({ words, activeIndex, onChangeIndex, speed = 65, delay = 2800 }) {
+  diff_history_utf8.txt:268:+  const [currentText, setCurrentText] = useState("");
+  diff_history_utf8.txt:269:+  const [isDeleting, setIsDeleting] = useState(false);
+  diff_history_utf8.txt:270:+  const [wordIndex, setWordIndex] = useState(0);
+  diff_history_utf8.txt:271:+
+  diff_history_utf8.txt:272:+  useEffect(() => {
+  diff_history_utf8.txt:273:+    let timer;
+  diff_history_utf8.txt:274:+    const word = words[wordIndex];
+  diff_history_utf8.txt:275:+
+  diff_history_utf8.txt:276:+    if (isDeleting) {
+  diff_history_utf8.txt:277:+      timer = setTimeout(() => {
+  diff_history_utf8.txt:278:+        setCurrentText((prev) => prev.slice(0, -1));
+  diff_history_utf8.txt:279:+      }, speed / 2);
+  diff_history_utf8.txt:280:+    } else {
+  diff_history_utf8.txt:281:+      timer = setTimeout(() => {
+  diff_history_utf8.txt:282:+        setCurrentText((prev) => word.slice(0, prev.length + 1));
+  diff_history_utf8.txt:283:+      }, speed);
+  diff_history_utf8.txt:284:+    }
+  diff_history_utf8.txt:285:+
+  diff_history_utf8.txt:286:+    if (!isDeleting && currentText === word) {
+  diff_history_utf8.txt:287:+      timer = setTimeout(() => {
+
+
