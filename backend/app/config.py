@@ -7,9 +7,15 @@ _DOTENV_PATH = os.path.join(_HERE, '..', '.env')
 load_dotenv(dotenv_path=_DOTENV_PATH, override=True)
 
 def get_database_uri():
-    db_uri = os.environ.get('DATABASE_URL')
+    db_uri = os.environ.get("DATABASE_URL")
+
     if not db_uri:
         raise RuntimeError("DATABASE_URL is not set in the environment or .env file.")
+
+    # Railway gives mysql:// but SQLAlchemy needs mysql+pymysql://
+    if db_uri.startswith("mysql://"):
+        db_uri = db_uri.replace("mysql://", "mysql+pymysql://", 1)
+
     return db_uri
 
 
