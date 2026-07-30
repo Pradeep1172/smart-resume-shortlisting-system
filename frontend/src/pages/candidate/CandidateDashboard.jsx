@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
@@ -114,6 +114,7 @@ export default function CandidateDashboard() {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const getProfileCompletion = () => {
     const fields = [
@@ -422,13 +423,19 @@ export default function CandidateDashboard() {
   const trackingApp = applications.find(app => app.id.toString() === trackingAppId);
 
   return (
-    <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] bg-brand-bg text-brand-textPrimary">
+    <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] bg-brand-bg text-brand-textPrimary relative">
+      
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-brand-panel/40 backdrop-blur-md border-b md:border-b-0 md:border-r border-brand-border/60 p-4 shrink-0 flex flex-col justify-between md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:overflow-y-auto">
+      <aside className={`fixed md:relative z-50 w-64 md:w-20 lg:w-64 bg-brand-panel/40 backdrop-blur-md border-r border-brand-border/60 p-4 shrink-0 flex flex-col justify-between h-full md:h-[calc(100vh-4rem)] overflow-y-auto transition-transform transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:sticky md:top-16`}>
         <div className="space-y-6">
           <div className="px-3 py-2 flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-ping"></div>
-            <span className="text-xs font-bold text-brand-textSecondary uppercase tracking-widest block">Candidate Workstation</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-ping shrink-0"></div>
+            <span className="text-xs font-bold text-brand-textSecondary uppercase tracking-widest block md:hidden lg:block truncate">Candidate Workstation</span>
           </div>
           <nav className="space-y-1">
             {sidebarItems.map(item => {
@@ -439,26 +446,28 @@ export default function CandidateDashboard() {
                 <Link
                   key={item.id}
                   to={item.path}
+                  onClick={() => setIsMobileSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                     isActive 
                       ? 'bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10 border-l-4 border-brand-primary text-brand-primary font-bold shadow-premium' 
                       : 'text-brand-textSecondary hover:text-brand-textPrimary hover:bg-brand-panelLight/40'
                   }`}
+                  title={item.label}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-brand-primary' : 'text-brand-textSecondary'}`} />
-                  {item.label}
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-brand-primary' : 'text-brand-textSecondary'}`} />
+                  <span className="md:hidden lg:block truncate">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
         </div>
 
-        <div className="hidden md:block border-t border-brand-border/40 pt-4 mt-6 text-xs text-brand-textSecondary space-y-2">
-          <div>
+        <div className="border-t border-brand-border/40 pt-4 mt-6 text-xs text-brand-textSecondary space-y-2">
+          <div className="md:hidden lg:block">
             <p className="font-semibold text-brand-textPrimary truncate">{profileData.name || user?.name}</p>
             <p className="mt-0.5 truncate text-[10px]" title={profileData.headline}>{profileData.headline || 'Job Seeker'}</p>
           </div>
-          <div className="pt-1">
+          <div className="pt-1 md:hidden lg:block">
             <div className="flex justify-between items-center text-[10px] mb-1">
               <span className="font-bold text-brand-textSecondary">Profile Strength</span>
               <span className="font-extrabold text-brand-primary">{getProfileCompletion()}%</span>
@@ -471,7 +480,16 @@ export default function CandidateDashboard() {
       </aside>
 
       {/* Main Panel Content */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto relative">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto relative w-full overflow-x-hidden">
+        
+        {/* Mobile Header Toggle */}
+        <div className="md:hidden mb-4 flex items-center gap-3 bg-brand-panel border border-brand-border/60 p-3 rounded-2xl shadow-sm">
+           <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 bg-brand-bg rounded-lg border border-brand-border text-brand-textPrimary hover:bg-brand-panelLight transition-colors">
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+           </button>
+           <span className="font-bold text-sm text-brand-textPrimary">Candidate Menu</span>
+        </div>
+        
         <div className="absolute top-1/4 left-1/3 w-[30rem] h-[30rem] bg-brand-primary/5 rounded-full blur-[120px] pointer-events-none"></div>
 
         {loading ? (
@@ -776,64 +794,61 @@ export default function CandidateDashboard() {
                   <p className="text-xs mt-1">Submit job applications from Browse Jobs tab to see progress records.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-brand-bg/50 border-b border-brand-border/60 text-xs font-semibold text-brand-textSecondary uppercase tracking-wider">
-                        <th className="py-4 px-6">Applied vacancy</th>
-                        <th className="py-4 px-6">Company / Recruiter</th>
-                        <th className="py-4 px-6">Application Date</th>
-                        <th className="py-4 px-6">Status State</th>
-                        <th className="py-4 px-6 text-center">Pipeline Tracking</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-brand-border/40 text-sm">
-                      {applications.map(app => (
-                        <tr key={app.id} className="hover:bg-brand-panelLight/20 transition-colors">
-                          <td className="py-4 px-6 font-semibold text-brand-textPrimary flex items-center gap-2">
-                            {app.company_logo_path ? (
-                              <img
-                                src={(() => {
-                                  const apiBase = API.defaults.baseURL || 'http://localhost:5000/api';
-                                  const hostBase = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
-                                  return `${hostBase}/api/recruiter/logo/${app.recruiter_id}?t=${encodeURIComponent(app.company_logo_path)}`;
-                                })()}
-                                alt=""
-                                className="w-8 h-8 rounded-lg object-cover border border-brand-border/40 bg-brand-bg shrink-0"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                  e.target.nextSibling.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            {!app.company_logo_path && (
-                              <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-xs shrink-0">
-                                {(app.company_name || app.recruiter_name || 'C')[0].toUpperCase()}
-                              </div>
-                            )}
-                            {app.company_logo_path && (
-                              <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-xs shrink-0" style={{ display: 'none' }}>
-                                {(app.company_name || app.recruiter_name || 'C')[0].toUpperCase()}
-                              </div>
-                            )}
-                            <span className="truncate max-w-[150px]">{app.job_title}</span>
-                          </td>
-                          <td className="py-4 px-6 text-brand-textSecondary">{app.company_name || app.recruiter_name || 'Company'} / {app.candidate_name}</td>
-                          <td className="py-4 px-6 text-brand-textSecondary">{new Date(app.applied_at).toLocaleDateString()}</td>
-                          <td className="py-4 px-6">{getStatusBadge(app.status)}</td>
-                          <td className="py-4 px-6 text-center">
-                            <Link
-                              to="/tracking"
-                              onClick={() => setTrackingAppId(app.id.toString())}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-primary/10 border border-brand-primary/20 text-brand-primary hover:bg-brand-primary hover:text-white transition-all text-xs font-semibold"
-                            >
-                              <Sliders className="w-3.5 h-3.5" /> Status Timeline
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                  {applications.map(app => (
+                    <div key={app.id} className="bg-white border border-brand-border/60 hover:border-brand-primary/40 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition-all group">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          {app.company_logo_path ? (
+                            <img
+                              src={(() => {
+                                const apiBase = API.defaults.baseURL || 'http://localhost:5000/api';
+                                const hostBase = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+                                return `${hostBase}/api/recruiter/logo/${app.recruiter_id}?t=${encodeURIComponent(app.company_logo_path)}`;
+                              })()}
+                              alt=""
+                              className="w-10 h-10 rounded-xl object-cover border border-brand-border/40 bg-brand-bg shrink-0"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          {!app.company_logo_path && (
+                            <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-sm shrink-0">
+                              {(app.company_name || app.recruiter_name || 'C')[0].toUpperCase()}
+                            </div>
+                          )}
+                          {app.company_logo_path && (
+                            <div className="w-10 h-10 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-bold text-sm shrink-0" style={{ display: 'none' }}>
+                              {(app.company_name || app.recruiter_name || 'C')[0].toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-brand-textPrimary text-sm truncate">{app.job_title}</h4>
+                            <p className="text-xs text-brand-textSecondary truncate">{app.company_name || app.recruiter_name || 'Company'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2 mb-4">
+                        <div className="text-xs text-brand-textSecondary">
+                          Applied: <span className="font-semibold text-brand-textPrimary">{new Date(app.applied_at).toLocaleDateString()}</span>
+                        </div>
+                        <div>{getStatusBadge(app.status)}</div>
+                      </div>
+
+                      <div className="pt-3 border-t border-brand-border/40 mt-auto">
+                        <Link
+                          to="/tracking"
+                          onClick={() => setTrackingAppId(app.id.toString())}
+                          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-brand-primary/10 border border-brand-primary/20 text-brand-primary hover:bg-brand-primary hover:text-white transition-all text-xs font-bold shadow-sm"
+                        >
+                          <Sliders className="w-4 h-4" /> Status Timeline
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -178,10 +178,10 @@ export default function Register() {
   }`;
 
   return (
-    <div className="min-h-screen w-full flex font-sans overflow-hidden">
+    <div className="min-h-screen w-full flex flex-col lg:flex-row font-sans overflow-auto lg:overflow-hidden">
       
       {/* ═══ LEFT PANEL (AI Background Video) ═══ */}
-      <div className="hidden lg:flex lg:w-[50%] relative bg-[#060B18] text-white flex-col justify-center items-center overflow-hidden">
+      <div className="flex w-full lg:w-[50%] relative bg-[#060B18] text-white flex-col justify-center items-center overflow-hidden py-16 lg:py-0 min-h-[50vh] lg:min-h-screen shrink-0">
         
         <video 
           src="/Videos/shortlistiq-ai.mp4" 
@@ -222,7 +222,7 @@ export default function Register() {
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 z-20 flex justify-between items-center px-12 pb-8 text-[11px] text-slate-600">
+        <div className="hidden lg:flex absolute bottom-0 left-0 right-0 z-20 justify-between items-center px-12 pb-8 text-[11px] text-slate-600">
           <span>© 2026 ShortlistIQ</span>
           <div className="flex gap-5">
             <a href="#" className="hover:text-slate-400 transition-colors">Terms</a>
@@ -467,7 +467,7 @@ export default function Register() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-slate-700 ml-0.5 text-ellipsis overflow-hidden whitespace-nowrap">Official Email</label>
                         <div className={inputWrap(compEmailFocused)}>
@@ -491,7 +491,7 @@ export default function Register() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-slate-700 ml-0.5">Contact Number</label>
                         <div className={inputWrap(phoneFocused)}>

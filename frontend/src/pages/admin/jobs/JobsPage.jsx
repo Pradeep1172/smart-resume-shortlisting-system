@@ -315,7 +315,7 @@ export default function JobsPage({ jobs = [], users = [], onRefresh, onDeleteJob
                 </span>
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-brand-border/40">
+              <div className="hidden md:block overflow-x-auto rounded-xl border border-brand-border/40">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-brand-panelLight/40 border-b border-brand-border/60 text-xs font-semibold text-brand-textSecondary uppercase tracking-wider">
@@ -380,6 +380,52 @@ export default function JobsPage({ jobs = [], users = [], onRefresh, onDeleteJob
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Cards for Recruiters */}
+              <div className="md:hidden space-y-4">
+                {filteredRecruiters.length === 0 ? (
+                  <div className="py-16 text-center text-brand-textSecondary text-xs border border-brand-border/40 rounded-xl">
+                    <Search className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                    No recruiters found matching requirements.
+                  </div>
+                ) : (
+                  filteredRecruiters.map((data, idx) => (
+                    <div key={data.recruiter.id || idx} className="bg-white border border-brand-border/60 rounded-2xl p-4 flex flex-col space-y-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-sm font-bold text-brand-primary shrink-0">
+                          {getInitials(data.recruiter.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-brand-textPrimary truncate">{data.recruiter.name}</h4>
+                          <p className="text-[10px] text-brand-textSecondary truncate flex items-center gap-1">
+                            <Building className="w-3 h-3" /> {data.recruiter.company || 'Independent'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 text-xs border-y border-brand-border/40 py-3">
+                        <div>
+                          <span className="block text-brand-textSecondary mb-1 font-semibold">Jobs (Active/Total)</span>
+                          <span className="font-bold text-brand-success">{data.activeJobs}</span>
+                          <span className="text-brand-border/80 mx-1">/</span>
+                          <span className="font-bold text-brand-textPrimary">{data.totalJobs}</span>
+                        </div>
+                        <div>
+                          <span className="block text-brand-textSecondary mb-1 font-semibold">Total Apps</span>
+                          <span className="font-bold text-brand-accent">{data.totalApplications}</span>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => handleViewRecruiterDetails(data)}
+                        className="w-full py-2.5 bg-brand-primary text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                      >
+                        View Details <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </motion.div>
@@ -498,7 +544,7 @@ export default function JobsPage({ jobs = [], users = [], onRefresh, onDeleteJob
                   </span>
                 </div>
                 
-                <div className="overflow-x-auto rounded-2xl border border-brand-border/50 max-h-[600px] overflow-y-auto flex-1 shadow-inner bg-brand-panelLight/10">
+                <div className="hidden md:block overflow-x-auto rounded-2xl border border-brand-border/50 max-h-[600px] overflow-y-auto flex-1 shadow-inner bg-brand-panelLight/10">
                   <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-brand-panel/95 backdrop-blur-md z-10">
                       <tr className="border-b border-brand-border/60 text-[11px] font-bold text-brand-textSecondary uppercase tracking-wider">
@@ -560,6 +606,56 @@ export default function JobsPage({ jobs = [], users = [], onRefresh, onDeleteJob
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Cards for Recruiter Jobs */}
+                <div className="md:hidden space-y-4">
+                  {selectedRecruiter.jobs.length === 0 ? (
+                    <div className="py-12 text-center text-brand-textSecondary text-sm border border-brand-border/40 rounded-xl">
+                      <Briefcase className="w-8 h-8 mx-auto mb-4 opacity-20" />
+                      No jobs have been posted yet.
+                    </div>
+                  ) : (
+                    selectedRecruiter.jobs.map(job => (
+                      <div key={job.id} className="bg-white border border-brand-border/60 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                        <div>
+                          <h4 className="font-bold text-brand-textPrimary text-sm">{job.title}</h4>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-brand-textSecondary">
+                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-brand-secondary" /> {job.location || 'Remote'}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-brand-warning" /> {job.experience_required} Yrs</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between border-y border-brand-border/40 py-2">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-brand-textSecondary font-semibold">Status</span>
+                            <button
+                              onClick={() => handleToggleStatus(job)}
+                              disabled={actionLoading === job.id}
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase mt-0.5 ${
+                                job.status === 'open'
+                                  ? 'bg-brand-success/15 text-brand-success border border-brand-success/25'
+                                  : 'bg-brand-panelLight text-brand-textSecondary border border-brand-border/80'
+                              }`}
+                            >
+                              {job.status}
+                            </button>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-brand-textSecondary font-semibold">Applicants</span>
+                            <span className="font-bold text-brand-primary">{job.applications_count ?? 0}</span>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => handleViewJobApplicants(job)}
+                          className="w-full py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                        >
+                          <Users className="w-4 h-4" /> View Applicants
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -669,7 +765,7 @@ export default function JobsPage({ jobs = [], users = [], onRefresh, onDeleteJob
                 </div>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-brand-border/40 shadow-inner bg-brand-panelLight/10 max-h-[600px] overflow-y-auto">
+              <div className="hidden md:block overflow-x-auto rounded-2xl border border-brand-border/40 shadow-inner bg-brand-panelLight/10 max-h-[600px] overflow-y-auto">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-brand-panel/95 backdrop-blur-md">
                     <tr className="border-b border-brand-border/60 text-[11px] font-bold text-brand-textSecondary uppercase tracking-wider">
@@ -747,6 +843,56 @@ export default function JobsPage({ jobs = [], users = [], onRefresh, onDeleteJob
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Cards for Job Applicants */}
+              <div className="md:hidden space-y-4">
+                {loadingApps ? (
+                  <div className="py-12 text-center text-brand-textSecondary text-sm border border-brand-border/40 rounded-xl">
+                    <span className="w-8 h-8 border-2 border-brand-primary/30 border-t-brand-primary rounded-full animate-spin mb-3 mx-auto block"></span>
+                    Retrieving applicants...
+                  </div>
+                ) : processedApplications.length === 0 ? (
+                  <div className="py-12 text-center text-brand-textSecondary text-sm border border-brand-border/40 rounded-xl">
+                    <Inbox className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                    No applicants match your criteria.
+                  </div>
+                ) : (
+                  processedApplications.map((app, idx) => (
+                    <div key={idx} className="bg-white border border-brand-border/60 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                      <div>
+                        <h4 className="font-bold text-brand-textPrimary text-sm">{app.candidate_name}</h4>
+                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-brand-textSecondary">
+                          <Mail className="w-3 h-3 text-brand-primary/70" /> {app.candidate_email}
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs border-y border-brand-border/40 py-2">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] text-brand-textSecondary font-semibold">Status</span>
+                          <span className={`self-start px-2 py-0.5 rounded-md text-[9px] font-bold border uppercase tracking-wider ${getStatusColor(app.status)}`}>
+                            {app.status?.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[10px] text-brand-textSecondary font-semibold">AI Match</span>
+                          {app.match_score !== null && app.match_score !== undefined ? (
+                            <strong className={`font-bold ${getScoreTextClass(app.match_score)}`}>{app.match_score}%</strong>
+                          ) : (
+                            <span className="text-[10px] italic">Unevaluated</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => handleViewCandidateProfile(app)}
+                        className="w-full py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" /> View Profile
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </motion.div>
@@ -862,40 +1008,61 @@ export default function JobsPage({ jobs = [], users = [], onRefresh, onDeleteJob
                           Candidate has not submitted any job applications across the platform yet.
                         </p>
                       ) : (
-                        <div className="overflow-x-auto border border-brand-border/50 rounded-xl shadow-inner bg-brand-panelLight/10">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead className="bg-brand-panel/95">
-                              <tr className="border-b border-brand-border/60 font-bold text-[11px] text-brand-textSecondary uppercase tracking-wider">
-                                <th className="py-3 px-4">Job Title</th>
-                                <th className="py-3 px-4">Company</th>
-                                <th className="py-3 px-4 text-center">Status</th>
-                                <th className="py-3 px-4 text-center">AI Match Score</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-brand-border/40">
-                              {candidateDetails.applications.map((app, aIdx) => (
-                                <tr key={app.id || aIdx} className="hover:bg-brand-panelLight/40 transition-colors">
-                                  <td className="py-3 px-4 font-bold text-brand-textPrimary truncate max-w-[180px] text-[13px]">
-                                    {app.job_title}
-                                  </td>
-                                  <td className="py-3 px-4 text-brand-textSecondary font-semibold truncate max-w-[150px]">
-                                    {app.company || '-'}
-                                  </td>
-                                  <td className="py-3 px-4 text-center">
-                                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider shadow-sm ${getStatusColor(app.status)}`}>
-                                      {app.status?.replace('_', ' ')}
-                                    </span>
-                                  </td>
-                                  <td className="py-3 px-4 text-center">
-                                    <span className={`font-extrabold text-[13px] ${getScoreTextClass(app.match_score)}`}>
-                                      {app.match_score ? `${app.match_score}%` : 'N/A'}
-                                    </span>
-                                  </td>
+                        <>
+                          <div className="hidden md:block overflow-x-auto border border-brand-border/50 rounded-xl shadow-inner bg-brand-panelLight/10">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead className="bg-brand-panel/95">
+                                <tr className="border-b border-brand-border/60 font-bold text-[11px] text-brand-textSecondary uppercase tracking-wider">
+                                  <th className="py-3 px-4">Job Title</th>
+                                  <th className="py-3 px-4">Company</th>
+                                  <th className="py-3 px-4 text-center">Status</th>
+                                  <th className="py-3 px-4 text-center">AI Match Score</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                              </thead>
+                              <tbody className="divide-y divide-brand-border/40">
+                                {candidateDetails.applications.map((app, aIdx) => (
+                                  <tr key={app.id || aIdx} className="hover:bg-brand-panelLight/40 transition-colors">
+                                    <td className="py-3 px-4 font-bold text-brand-textPrimary truncate max-w-[180px] text-[13px]">
+                                      {app.job_title}
+                                    </td>
+                                    <td className="py-3 px-4 text-brand-textSecondary font-semibold truncate max-w-[150px]">
+                                      {app.company || '-'}
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider shadow-sm ${getStatusColor(app.status)}`}>
+                                        {app.status?.replace('_', ' ')}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                      <span className={`font-extrabold text-[13px] ${getScoreTextClass(app.match_score)}`}>
+                                        {app.match_score ? `${app.match_score}%` : 'N/A'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="md:hidden space-y-3">
+                            {candidateDetails.applications.map((app, aIdx) => (
+                              <div key={app.id || aIdx} className="border border-brand-border/50 bg-brand-panelLight/10 rounded-xl p-4 shadow-sm flex flex-col gap-2">
+                                <div>
+                                  <h5 className="font-bold text-brand-textPrimary text-[13px]">{app.job_title}</h5>
+                                  <p className="text-brand-textSecondary text-[11px] font-semibold mt-0.5">{app.company || '-'}</p>
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] border-t border-brand-border/30 pt-2 mt-1">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${getStatusColor(app.status)}`}>
+                                    {app.status?.replace('_', ' ')}
+                                  </span>
+                                  <span className={`font-extrabold ${getScoreTextClass(app.match_score)}`}>
+                                    Match: {app.match_score ? `${app.match_score}%` : 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>

@@ -307,47 +307,78 @@ export default function JobDetailModal({ jobId, onClose }) {
                     No applications submitted for this vacancy yet.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto border border-brand-border/40 rounded-xl">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-brand-panelLight/40 border-b border-brand-border/60 font-semibold text-brand-textSecondary uppercase">
-                          <th className="py-3 px-4">Candidate Name</th>
-                          <th className="py-3 px-4 text-center">Status</th>
-                          <th className="py-3 px-4 text-center">AI Match Score</th>
-                          <th className="py-3 px-4">Applied Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-brand-border/40">
-                        {jobData.recent_applications.map((app, aIdx) => (
-                          <tr key={app.id || aIdx} className="hover:bg-brand-panelLight/20">
-                            <td className="py-3 px-4 font-bold text-brand-textPrimary">
-                              {app.candidate_name}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${getStatusColor(app.status)}`}>
-                                {app.status?.replace('_', ' ')}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {app.match_score !== null ? (
-                                <div className="flex items-center justify-center gap-2">
-                                  <div className="w-12 h-1.5 bg-brand-panelLight rounded-full overflow-hidden border border-brand-border/30">
-                                    <div className={`h-full ${getScoreColor(app.match_score)}`} style={{ width: `${app.match_score}%` }} />
-                                  </div>
-                                  <strong className={`font-bold text-xs ${getScoreTextColor(app.match_score)}`}>{app.match_score}%</strong>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-brand-textSecondary/60 italic font-semibold">Unevaluated</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-brand-textSecondary font-semibold">
-                              {app.applied_at ? new Date(app.applied_at).toLocaleString() : 'Unknown'}
-                            </td>
+                  <>
+                    <div className="hidden md:block overflow-x-auto border border-brand-border/40 rounded-xl">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-brand-panelLight/40 border-b border-brand-border/60 font-semibold text-brand-textSecondary uppercase">
+                            <th className="py-3 px-4">Candidate Name</th>
+                            <th className="py-3 px-4 text-center">Status</th>
+                            <th className="py-3 px-4 text-center">AI Match Score</th>
+                            <th className="py-3 px-4">Applied Date</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-brand-border/40">
+                          {jobData.recent_applications.map((app, aIdx) => (
+                            <tr key={app.id || aIdx} className="hover:bg-brand-panelLight/20">
+                              <td className="py-3 px-4 font-bold text-brand-textPrimary">
+                                {app.candidate_name}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${getStatusColor(app.status)}`}>
+                                  {app.status?.replace('_', ' ')}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                {app.match_score !== null ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <div className="w-12 h-1.5 bg-brand-panelLight rounded-full overflow-hidden border border-brand-border/30">
+                                      <div className={`h-full ${getScoreColor(app.match_score)}`} style={{ width: `${app.match_score}%` }} />
+                                    </div>
+                                    <strong className={`font-bold text-xs ${getScoreTextColor(app.match_score)}`}>{app.match_score}%</strong>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-brand-textSecondary/60 italic font-semibold">Unevaluated</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-brand-textSecondary font-semibold">
+                                {app.applied_at ? new Date(app.applied_at).toLocaleString() : 'Unknown'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div className="md:hidden space-y-3">
+                      {jobData.recent_applications.map((app, aIdx) => (
+                        <div key={app.id || aIdx} className="bg-brand-panelLight/15 border border-brand-border/40 p-4 rounded-xl space-y-3">
+                          <div className="flex items-start justify-between">
+                            <h5 className="font-bold text-brand-textPrimary text-xs">{app.candidate_name}</h5>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${getStatusColor(app.status)}`}>
+                              {app.status?.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px]">
+                            <div>
+                              <span className="block font-bold text-brand-textSecondary uppercase">AI Match Score</span>
+                              {app.match_score !== null ? (
+                                <strong className={`font-bold ${getScoreTextColor(app.match_score)}`}>{app.match_score}%</strong>
+                              ) : (
+                                <span className="italic text-brand-textSecondary/60">Unevaluated</span>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <span className="block font-bold text-brand-textSecondary uppercase">Applied Date</span>
+                              <span className="text-brand-textSecondary font-semibold">
+                                {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'Unknown'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             </>

@@ -1476,7 +1476,7 @@ export default function ExternalHiringTab() {
 
               {/* Ranking Table */}
               <div className="bg-white border border-brand-border/60 rounded-3xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-brand-bg/50 border-b border-brand-border/80 text-[10px] font-bold text-brand-textSecondary uppercase tracking-widest">
@@ -1622,6 +1622,128 @@ export default function ExternalHiringTab() {
                       })}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="md:hidden space-y-4 p-4 bg-brand-bg/30">
+                  {sortedCandidates.map((cand, index) => {
+                    const hasScore = cand.match_percentage !== null;
+                    const score = hasScore ? Math.round(cand.match_percentage) : 0;
+                    const rec = hasScore ? getRecommendationLabel(cand.match_percentage) : null;
+
+                    return (
+                      <div key={cand.id} className="bg-white border border-brand-border/60 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary/10 to-brand-secondary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary font-extrabold text-sm uppercase shrink-0">
+                              {(cand.name || 'C')[0]}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-brand-textPrimary text-sm truncate">{cand.name || 'Unknown Candidate'}</div>
+                              <div className="text-[10px] text-brand-textSecondary font-semibold truncate">{cand.email || 'N/A'}</div>
+                            </div>
+                          </div>
+                          {hasScore && (
+                            <div className="flex flex-col items-end shrink-0">
+                              <span className="text-[9px] font-bold text-brand-textSecondary uppercase tracking-wider mb-0.5">Rank</span>
+                              <span className="text-sm font-black text-brand-primary">#{index + 1}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-[11px] bg-brand-panelLight/40 rounded-xl p-3 border border-brand-border/40">
+                          <div>
+                            <span className="block text-[9px] font-bold text-brand-textSecondary uppercase tracking-wider">External ID</span>
+                            <span className="font-mono text-brand-secondary font-semibold truncate block">{cand.external_candidate_id}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] font-bold text-brand-textSecondary uppercase tracking-wider">Phone</span>
+                            <span className="text-slate-600 font-semibold truncate block">{cand.phone || 'N/A'}</span>
+                          </div>
+                          <div className="col-span-2 mt-1 pt-2 border-t border-brand-border/40">
+                            <span className="block text-[9px] font-bold text-brand-textSecondary uppercase tracking-wider mb-1">Resume File</span>
+                            <button
+                              onClick={() => handleViewResume(cand.id)}
+                              className="inline-flex items-center gap-1.5 text-brand-primary hover:underline font-semibold text-left w-full"
+                            >
+                              <FileText className="w-3.5 h-3.5 shrink-0 text-brand-secondary" />
+                              <span className="truncate">{cand.file_name}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 pb-3 border-b border-brand-border/40">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-brand-textSecondary uppercase tracking-wider">Match Score</span>
+                            {hasScore ? (
+                              <span className={`px-2 py-0.5 rounded-full font-black border text-[10px] ${
+                                score >= 85 ? 'text-brand-success bg-brand-success/10 border-brand-success/20' : 
+                                score >= 70 ? 'text-brand-primary bg-brand-primary/10 border-brand-primary/20' : 
+                                score >= 50 ? 'text-brand-secondary bg-brand-secondary/10 border-brand-secondary/20' : 
+                                'text-brand-danger bg-brand-danger/10 border-brand-danger/20'
+                              }`}>
+                                {score}% Match
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-semibold">Not Evaluated</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-brand-textSecondary uppercase tracking-wider">Recommendation</span>
+                            {hasScore && rec ? (
+                              <span className={`inline-flex px-2 py-0.5 rounded-full font-bold border text-[10px] ${rec.style}`}>
+                                {rec.emoji} {rec.text}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">-</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-brand-textSecondary uppercase tracking-wider">Status</span>
+                            {cand.status === 'shortlisted' && !shortlistConfirmed ? (
+                              <span className="bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-lg text-[9px] font-bold shadow-sm">
+                                ⏳ Pending Confirm
+                              </span>
+                            ) : (
+                              <select
+                                value={cand.status}
+                                onChange={(e) => handleUpdateStatus(cand.id, e.target.value)}
+                                className={`border rounded-lg px-2 py-1 text-[10px] font-bold focus:outline-none ${getStatusBadgeClass(cand.status)}`}
+                              >
+                                <option value="pending_evaluation">⏳ Pending Evaluation</option>
+                                <option value="evaluated">✓ Evaluated</option>
+                                <option value="shortlisted">⭐ Shortlisted</option>
+                                <option value="interview">📅 Interview</option>
+                                <option value="selected">🏆 Selected</option>
+                                <option value="hired">🎉 Hired</option>
+                                <option value="rejected">✗ Rejected</option>
+                              </select>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          {hasScore && (
+                            <button
+                              onClick={() => {
+                                setSelectedCandidate(cand);
+                                setShowMatchModal(true);
+                              }}
+                              className="flex-1 bg-brand-primary/10 border border-brand-primary/20 text-brand-primary py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                            >
+                              <Eye className="w-4 h-4" /> AI Insights
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteCandidate(cand.id)}
+                            className="px-4 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

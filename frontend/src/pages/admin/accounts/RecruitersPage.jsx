@@ -286,7 +286,8 @@ export default function RecruitersPage({ users = [], jobs = [], onRefresh }) {
             </span>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-brand-border/40">
+          {/* Desktop Table Representation */}
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-brand-border/40">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-brand-panelLight/40 border-b border-brand-border/60 text-xs font-semibold text-brand-textSecondary uppercase tracking-wider">
@@ -406,6 +407,101 @@ export default function RecruitersPage({ users = [], jobs = [], onRefresh }) {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards Representation */}
+          <div className="md:hidden space-y-4">
+            {filteredApproved.length === 0 ? (
+              <div className="py-12 text-center text-brand-textSecondary text-xs border border-brand-border/40 rounded-xl">
+                No approved recruiters found matching search parameters.
+              </div>
+            ) : (
+              filteredApproved.map((recruiter) => (
+                <div key={recruiter.id} className="bg-white border border-brand-border/60 rounded-2xl p-4 flex flex-col space-y-4 shadow-sm">
+                  {/* Header: Avatar, Name, Email, Status */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-primary/10 to-brand-secondary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary text-sm font-bold shrink-0 shadow-sm overflow-hidden">
+                        {recruiter.company_logo_path ? (
+                          <img
+                            src={`${API.defaults.baseURL.endsWith('/api') ? API.defaults.baseURL.slice(0, -4) : API.defaults.baseURL}/api/recruiter/logo/${recruiter.id}?t=${encodeURIComponent(recruiter.company_logo_path)}`}
+                            alt={recruiter.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentNode.innerHTML = `<span class="text-xs font-bold text-brand-primary">${getInitials(recruiter.name)}</span>`;
+                            }}
+                          />
+                        ) : (
+                          <span className="text-xs font-bold text-brand-primary">{getInitials(recruiter.name)}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-brand-textPrimary truncate">{recruiter.name}</h4>
+                        <p className="text-[10px] text-brand-textSecondary truncate">{recruiter.email}</p>
+                      </div>
+                    </div>
+                    {recruiter.email_verified && recruiter.approval_status === 'approved' ? (
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-brand-success/15 text-brand-success border border-brand-success/25">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-brand-border text-brand-textSecondary border border-brand-border">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Company Info */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-600 text-xs font-bold">
+                      🏢
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-brand-textPrimary font-semibold text-xs tracking-tight">{recruiter.company_name || recruiter.company || 'Independent Recruiter'}</span>
+                      <span className="text-[9px] text-brand-textSecondary uppercase font-bold tracking-wider mt-0.5">
+                        {recruiter.company_details?.industry || 'Enterprise'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3 text-xs border-y border-brand-border/40 py-3">
+                    <div>
+                      <span className="block text-brand-textSecondary mb-1 font-semibold">Jobs (Active / Total)</span>
+                      <span className="font-bold text-brand-success">{recruiter.active_jobs ?? 0}</span>
+                      <span className="text-brand-border/80 mx-1">/</span>
+                      <span className="font-bold text-brand-textPrimary">{recruiter.total_jobs ?? 0}</span>
+                    </div>
+                    <div>
+                      <span className="block text-brand-textSecondary mb-1 font-semibold">Apps Received</span>
+                      <span className="font-bold text-brand-accent">{recruiter.applications_received ?? 0}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Actions & Join Date */}
+                  <div className="flex items-center justify-between text-[10px] text-brand-textSecondary">
+                    <span>Joined: {new Date(recruiter.created_at).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate(`/jobs-monitoring/recruiters/${recruiter.id}`)}
+                        className="p-1.5 text-brand-textSecondary hover:text-brand-primary bg-brand-panelLight rounded-lg transition-colors"
+                        title="View Jobs & Analytics"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(recruiter)}
+                        className="p-1.5 text-brand-textSecondary hover:text-brand-danger bg-brand-panelLight rounded-lg transition-colors"
+                        title="Delete Recruiter"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

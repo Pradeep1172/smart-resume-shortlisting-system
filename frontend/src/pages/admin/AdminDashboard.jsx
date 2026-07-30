@@ -107,6 +107,7 @@ export default function AdminDashboard() {
   const [savingConfig, setSavingConfig] = useState(false);
   const [configSuccess, setConfigSuccess] = useState(null);
   const [configError, setConfigError] = useState(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Sync tab with URL path changes
   useEffect(() => {
@@ -242,19 +243,25 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-brand-bg flex flex-col text-brand-textPrimary font-sans">
+    <div className="min-h-[calc(100vh-4rem)] bg-brand-bg flex flex-col text-brand-textPrimary font-sans relative">
       <div className="flex-grow flex-1 flex">
+        
+        {/* Mobile Sidebar Overlay */}
+        {isMobileSidebarOpen && (
+          <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
+        )}
+
         {/* SIDEBAR NAVIGATION */}
-        <aside className="w-64 bg-brand-panel border-r border-brand-border/60 shrink-0 hidden md:flex flex-col justify-between py-6 px-4 sticky top-16 h-[calc(100vh-4rem)]">
+        <aside className={`fixed md:relative z-50 w-64 md:w-20 lg:w-64 bg-brand-panel border-r border-brand-border/60 shrink-0 flex flex-col justify-between py-6 px-4 h-full md:h-[calc(100vh-4rem)] overflow-y-auto transition-transform transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:sticky md:top-16`}>
         <div className="space-y-6">
           {/* Brand Header */}
           <div className="px-3 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center text-white font-extrabold text-sm shadow-md shrink-0">
               A
             </div>
-            <div>
-              <h2 className="font-extrabold text-xs tracking-wider uppercase text-brand-textPrimary">Admin Portal</h2>
-              <span className="text-[9px] text-brand-textSecondary font-bold">V1.2 PRODUCTION</span>
+            <div className="md:hidden lg:block min-w-0">
+              <h2 className="font-extrabold text-xs tracking-wider uppercase text-brand-textPrimary truncate">Admin Portal</h2>
+              <span className="text-[9px] text-brand-textSecondary font-bold truncate">V1.2 PRODUCTION</span>
             </div>
           </div>
 
@@ -269,11 +276,11 @@ export default function AdminDashboard() {
                       onClick={() => item.setExpanded(!item.expanded)}
                       className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-brand-textSecondary hover:text-brand-textPrimary transition-all rounded-lg"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="w-4 h-4 text-brand-textSecondary" />
-                        <span>{item.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className="w-4 h-4 text-brand-textSecondary shrink-0" />
+                        <span className="md:hidden lg:block truncate">{item.label}</span>
                       </div>
-                      {item.expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      {item.expanded ? <ChevronUp className="w-3.5 h-3.5 shrink-0 md:hidden lg:block" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0 md:hidden lg:block" />}
                     </button>
                     <AnimatePresence initial={false}>
                       {item.expanded && (
@@ -291,14 +298,16 @@ export default function AdminDashboard() {
                               <Link
                                 key={child.id}
                                 to={child.path}
+                                onClick={() => setIsMobileSidebarOpen(false)}
                                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
                                   isChildActive
                                     ? 'bg-brand-primary/10 text-brand-primary border-l-2 border-brand-primary font-bold'
                                     : 'text-brand-textSecondary hover:text-brand-textPrimary hover:bg-brand-panelLight/45'
                                 }`}
+                                title={child.label}
                               >
                                 <ChildIcon className="w-3.5 h-3.5 shrink-0" />
-                                <span>{child.label}</span>
+                                <span className="md:hidden lg:block truncate">{child.label}</span>
                               </Link>
                             );
                           })}
@@ -314,14 +323,16 @@ export default function AdminDashboard() {
                 <Link
                   key={item.id}
                   to={item.path}
+                  onClick={() => setIsMobileSidebarOpen(false)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold rounded-lg transition-all ${
                     isActive
                       ? 'bg-brand-primary/10 text-brand-primary border-l-2 border-brand-primary font-extrabold'
                       : 'text-brand-textSecondary hover:text-brand-textPrimary hover:bg-brand-panelLight/45'
                   }`}
+                  title={item.label}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.label}</span>
+                  <span className="md:hidden lg:block truncate">{item.label}</span>
                 </Link>
               );
             })}
@@ -329,7 +340,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* System Status indicator */}
-        <div className="bg-brand-panelLight/40 border border-brand-border/60 py-2.5 px-3 rounded-xl space-y-2 mx-2">
+        <div className="bg-brand-panelLight/40 border border-brand-border/60 py-2.5 px-3 rounded-xl space-y-2 mx-2 hidden lg:block">
           <div className="flex items-center justify-between pb-1 border-b border-brand-border/45">
             <span className="text-sm font-bold uppercase tracking-wider text-brand-textPrimary flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-brand-primary animate-pulse" /> System Status
@@ -378,8 +389,17 @@ export default function AdminDashboard() {
       </aside>
 
       {/* MAIN CONTENT PORT */}
-      <main className="flex-grow flex flex-col justify-between flex-1 min-w-0">
-        <div className="p-6 md:p-8 space-y-6 flex-grow">
+      <main className="flex-grow flex flex-col justify-between flex-1 min-w-0 w-full">
+        
+        {/* Mobile Header Toggle */}
+        <div className="md:hidden mx-4 mt-6 flex items-center gap-3 bg-brand-panel border border-brand-border/60 p-3 rounded-2xl shadow-sm">
+           <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 bg-brand-bg rounded-lg border border-brand-border text-brand-textPrimary hover:bg-brand-panelLight transition-colors">
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+           </button>
+           <span className="font-bold text-sm text-brand-textPrimary">Admin Menu</span>
+        </div>
+
+        <div className="p-4 md:p-8 space-y-6 flex-grow overflow-x-hidden">
           {loading ? (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-brand-textSecondary text-xs">
               <span className="w-10 h-10 border-2 border-brand-primary/30 border-t-brand-primary rounded-full animate-spin mb-3"></span>

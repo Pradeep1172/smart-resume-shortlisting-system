@@ -282,6 +282,7 @@ export default function RecruiterDashboard() {
   const [candidateProfileLoading, setCandidateProfileLoading] = useState(false);
   const [leftPaneTab, setLeftPaneTab] = useState('profile');
   const [evaluatingApps, setEvaluatingApps] = useState({});
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const pendingTasksList = useMemo(() => {
     const now = new Date();
@@ -1746,13 +1747,19 @@ export default function RecruiterDashboard() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] bg-brand-bg text-brand-textPrimary">
+    <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] bg-brand-bg text-brand-textPrimary relative">
+      
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-brand-border/80 p-4 shrink-0 flex flex-col justify-between md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:overflow-y-auto">
+      <aside className={`fixed md:relative z-50 w-64 md:w-20 lg:w-64 bg-white border-r border-brand-border/80 p-4 shrink-0 flex flex-col justify-between h-full md:h-[calc(100vh-4rem)] overflow-y-auto transition-transform transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:sticky md:top-16`}>
         <div className="space-y-6">
           <div className="px-3 py-2 flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-pulse"></div>
-            <span className="text-xs font-bold text-brand-textSecondary uppercase tracking-widest block">ATS Workflow Panel</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-pulse shrink-0"></div>
+            <span className="text-xs font-bold text-brand-textSecondary uppercase tracking-widest block md:hidden lg:block truncate">ATS Workflow Panel</span>
           </div>
           <nav className="space-y-1">
             {sidebarItems.map(item => {
@@ -1763,11 +1770,13 @@ export default function RecruiterDashboard() {
                 <Link
                   key={item.id}
                   to={item.path}
+                  onClick={() => setIsMobileSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all relative ${
                     isActive 
                       ? 'text-brand-primary font-bold shadow-sm' 
                       : 'text-brand-textSecondary hover:text-brand-textPrimary hover:bg-brand-panelLight'
                   }`}
+                  title={item.label}
                 >
                   {isActive && (
                     <motion.div 
@@ -1776,16 +1785,16 @@ export default function RecruiterDashboard() {
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
-                  <Icon className={`w-4 h-4 z-10 ${isActive ? 'text-brand-primary' : 'text-brand-textSecondary'}`} />
-                  <span className="z-10">{item.label}</span>
+                  <Icon className={`w-4 h-4 z-10 shrink-0 ${isActive ? 'text-brand-primary' : 'text-brand-textSecondary'}`} />
+                  <span className="z-10 md:hidden lg:block truncate">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
         </div>
         
-        <div className="hidden md:block border-t border-brand-border/40 pt-4 mt-6 text-xs text-brand-textSecondary">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="border-t border-brand-border/40 pt-4 mt-6 text-xs text-brand-textSecondary">
+          <div className="flex items-center justify-center lg:justify-start gap-2 mb-2">
             {companyLogoUrl ? (
               <img
                 src={companyLogoUrl}
@@ -1807,16 +1816,24 @@ export default function RecruiterDashboard() {
                 {(profileData.company || user?.name || 'R')[0].toUpperCase()}
               </div>
             )}
-            <div>
-              <p className="font-semibold text-brand-textPrimary leading-tight">{profileData.name || user?.name || 'Jane Recruiter'}</p>
-              <p className="text-[10px]">{profileData.title || 'Recruiter'}</p>
+            <div className="md:hidden lg:block min-w-0">
+              <p className="font-semibold text-brand-textPrimary leading-tight truncate">{profileData.name || user?.name || 'Jane Recruiter'}</p>
+              <p className="text-[10px] truncate">{profileData.title || 'Recruiter'}</p>
             </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 md:p-6 overflow-y-auto relative">
+      <main className="flex-1 p-4 md:p-6 overflow-y-auto relative w-full overflow-x-hidden">
+        
+        {/* Mobile Header Toggle */}
+        <div className="md:hidden mb-4 flex items-center gap-3 bg-brand-panel border border-brand-border/60 p-3 rounded-2xl shadow-sm">
+           <button onClick={() => setIsMobileSidebarOpen(true)} className="p-2 bg-brand-bg rounded-lg border border-brand-border text-brand-textPrimary hover:bg-brand-panelLight transition-colors">
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+           </button>
+           <span className="font-bold text-sm text-brand-textPrimary">Dashboard Menu</span>
+        </div>
         <div className="absolute top-1/4 left-1/3 w-[30rem] h-[30rem] bg-brand-primary/5 rounded-full blur-[120px] pointer-events-none"></div>
 
         <AnimatePresence mode="wait">
@@ -5745,60 +5762,48 @@ export default function RecruiterDashboard() {
                 {applications.filter(a => a.job_id === selectedJob.id).length === 0 ? (
                   <p className="text-xs text-brand-textSecondary italic py-4">No candidates have applied to this role yet.</p>
                 ) : (
-                  <div className="border border-brand-border/60 rounded-2xl overflow-hidden bg-white">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-brand-bg/50 border-b border-brand-border/60 text-xs font-bold text-brand-textSecondary uppercase tracking-wider">
-                          <th className="py-3 px-4">Candidate Name</th>
-                          <th className="py-3 px-4">Match Score</th>
-                          <th className="py-3 px-4">Status</th>
-                          <th className="py-3 px-4 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-brand-border/40 text-sm">
-                        {applications.filter(a => a.job_id === selectedJob.id).map(app => (
-                          <tr key={app.id} className="hover:bg-brand-panelLight/10 transition-colors">
-                            <td 
-                              onClick={() => { setSelectedJob(null); handleOpenAppDetails(app); }}
-                              className="py-3 px-4 font-semibold text-brand-textPrimary cursor-pointer hover:text-brand-primary transition-colors"
-                            >
-                              {app.candidate_name}
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-1.5">
-                                {app.match_score ? (
-                                  <span className="text-brand-primary font-bold">{Math.round(app.match_score.final_score)}%</span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-brand-warning/15 text-brand-warning border border-brand-warning/20">⏳ Pending</span>
-                                )}
-                                {app.match_score && (
-                                  <span className="text-[9px] px-1 rounded bg-brand-bg border border-brand-border text-brand-textSecondary font-semibold">
-                                    {app.match_score.evaluation_type === 'quick' ? '⚡' : '🧠'}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">{getStatusBadge(app.status, !!app.match_score, app.job_id)}</td>
-                            <td className="py-3 px-4 text-center flex justify-center gap-1.5">
-                              <button 
-                                onClick={() => handleViewResume(app.resume_id)} 
-                                title="View PDF Resume"
-                                className="p-1.5 bg-brand-panel hover:bg-brand-panelLight border border-brand-border rounded-lg text-brand-textSecondary hover:text-brand-textPrimary transition-all"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                              <button 
-                                onClick={() => { setSelectedJob(null); handleOpenAppDetails(app); }} 
-                                title="View Evaluation Details"
-                                className="p-1.5 bg-brand-panel hover:bg-brand-panelLight border border-brand-border rounded-lg text-brand-textSecondary hover:text-brand-textPrimary transition-all"
-                              >
-                                <Sliders className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {applications.filter(a => a.job_id === selectedJob.id).map(app => (
+                      <div key={app.id} className="bg-white border border-brand-border/60 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-3">
+                          <div 
+                            onClick={() => { setSelectedJob(null); handleOpenAppDetails(app); }}
+                            className="font-bold text-brand-textPrimary cursor-pointer hover:text-brand-primary transition-colors text-sm"
+                          >
+                            {app.candidate_name}
+                          </div>
+                          <div>{getStatusBadge(app.status, !!app.match_score, app.job_id)}</div>
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 mb-4">
+                          {app.match_score ? (
+                            <span className="text-brand-primary font-bold text-sm">{Math.round(app.match_score.final_score)}% Match</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-brand-warning/15 text-brand-warning border border-brand-warning/20">⏳ Pending</span>
+                          )}
+                          {app.match_score && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-bg border border-brand-border text-brand-textSecondary font-semibold">
+                              {app.match_score.evaluation_type === 'quick' ? '⚡' : '🧠'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2 pt-3 border-t border-brand-border/40">
+                          <button 
+                            onClick={() => handleViewResume(app.resume_id)} 
+                            className="flex-1 p-2 bg-brand-panel hover:bg-brand-panelLight border border-brand-border rounded-xl text-brand-textSecondary hover:text-brand-textPrimary transition-all flex items-center justify-center gap-1 text-xs font-semibold"
+                          >
+                            <Eye className="w-4 h-4" /> Resume
+                          </button>
+                          <button 
+                            onClick={() => { setSelectedJob(null); handleOpenAppDetails(app); }} 
+                            className="flex-1 p-2 bg-brand-panel hover:bg-brand-panelLight border border-brand-border rounded-xl text-brand-textSecondary hover:text-brand-textPrimary transition-all flex items-center justify-center gap-1 text-xs font-semibold"
+                          >
+                            <Sliders className="w-4 h-4" /> Analysis
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

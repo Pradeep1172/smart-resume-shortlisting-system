@@ -350,7 +350,7 @@ export default function ApplicationsPage({ users = [] }) {
         </div>
 
         {/* Table representation */}
-        <div className="overflow-x-auto rounded-xl border border-brand-border/40">
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-brand-border/40">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-brand-panelLight/40 border-b border-brand-border/60 text-xs font-semibold text-brand-textSecondary uppercase tracking-wider">
@@ -368,21 +368,21 @@ export default function ApplicationsPage({ users = [] }) {
             <tbody className="divide-y divide-brand-border/40 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-20 text-center text-brand-textSecondary text-xs">
+                  <td colSpan="9" className="py-20 text-center text-brand-textSecondary text-xs">
                     <span className="w-8 h-8 border-2 border-brand-primary/30 border-t-brand-primary rounded-full animate-spin block mx-auto mb-3"></span>
                     <span>Retrieving systems applications...</span>
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-brand-textSecondary text-xs">
+                  <td colSpan="9" className="py-12 text-center text-brand-textSecondary text-xs">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 text-brand-danger opacity-50" />
                     <span>{error}</span>
                   </td>
                 </tr>
               ) : filteredApps.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-brand-textSecondary text-xs">
+                  <td colSpan="9" className="py-12 text-center text-brand-textSecondary text-xs">
                     No applications found matching parameters.
                   </td>
                 </tr>
@@ -442,6 +442,80 @@ export default function ApplicationsPage({ users = [] }) {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards Representation */}
+        <div className="md:hidden space-y-4">
+          {loading ? (
+            <div className="py-20 text-center text-brand-textSecondary text-xs border border-brand-border/40 rounded-xl">
+              <span className="w-8 h-8 border-2 border-brand-primary/30 border-t-brand-primary rounded-full animate-spin block mx-auto mb-3"></span>
+              <span>Retrieving systems applications...</span>
+            </div>
+          ) : error ? (
+            <div className="py-12 text-center text-brand-textSecondary text-xs border border-brand-border/40 rounded-xl">
+              <AlertCircle className="w-8 h-8 mx-auto mb-2 text-brand-danger opacity-50" />
+              <span>{error}</span>
+            </div>
+          ) : filteredApps.length === 0 ? (
+            <div className="py-12 text-center text-brand-textSecondary text-xs border border-brand-border/40 rounded-xl">
+              No applications found matching parameters.
+            </div>
+          ) : (
+            filteredApps.map((app, idx) => (
+              <div key={idx} className="bg-white border border-brand-border/60 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-brand-textPrimary text-sm truncate">{app.candidate_name}</h4>
+                    <p className="text-[10px] text-brand-textSecondary truncate mt-0.5">{app.candidate_email}</p>
+                  </div>
+                  <span className={`shrink-0 px-2 py-0.5 rounded-md text-[9px] font-bold border uppercase tracking-wider shadow-sm ${getStatusColor(app.status)}`}>
+                    {app.status?.replace('_', ' ')}
+                  </span>
+                </div>
+                
+                <div className="bg-brand-panelLight/30 border border-brand-border/40 rounded-xl p-3 space-y-2">
+                  <div>
+                    <span className="block text-[9px] font-bold text-brand-textSecondary uppercase">Job Title</span>
+                    <span className="text-xs font-semibold text-brand-textPrimary">{app.job_title}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <span className="block text-[9px] font-bold text-brand-textSecondary uppercase">Company</span>
+                      <span className="text-[10px] text-brand-textPrimary">{getCompanyName(app.recruiter_name)}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-brand-textSecondary uppercase">Recruiter</span>
+                      <span className="text-[10px] text-brand-textPrimary">{app.recruiter_name || 'System'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-1">
+                  <div>
+                    <span className="block text-[9px] font-bold text-brand-textSecondary uppercase">Match Score</span>
+                    {app.match_score !== null && app.match_score !== undefined ? (
+                      <strong className={`font-bold text-sm ${getScoreTextClass(app.match_score)}`}>{app.match_score}%</strong>
+                    ) : (
+                      <span className="text-[10px] italic">Unevaluated</span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-[9px] font-bold text-brand-textSecondary uppercase">{dateCol}</span>
+                    <span className="text-[10px] text-brand-textSecondary font-semibold">
+                      {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => handleViewDetails(app)}
+                  className="w-full mt-2 py-2 bg-brand-primary/10 text-brand-primary border border-brand-primary/20 hover:bg-brand-primary hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                >
+                  <Eye className="w-4 h-4" /> View Details
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -554,44 +628,68 @@ export default function ApplicationsPage({ users = [] }) {
                           Candidate has not submitted any job applications yet.
                         </p>
                       ) : (
-                        <div className="overflow-x-auto border border-brand-border/40 rounded-xl">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead>
-                              <tr className="bg-brand-panelLight/40 border-b border-brand-border/60 font-semibold text-brand-textSecondary uppercase">
-                                <th className="py-3 px-4">Job Title</th>
-                                <th className="py-3 px-4">Company</th>
-                                <th className="py-3 px-4 text-center">Status</th>
-                                <th className="py-3 px-4 text-center">AI Match Score</th>
-                                <th className="py-3 px-4">Applied Date</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-brand-border/40">
-                              {candidateDetails.applications.map((app, aIdx) => (
-                                <tr key={app.id || aIdx} className="hover:bg-brand-panelLight/20">
-                                  <td className="py-3 px-4 font-semibold text-brand-textPrimary truncate max-w-[150px]">
-                                    {app.job_title}
-                                  </td>
-                                  <td className="py-3 px-4 text-brand-textSecondary truncate max-w-[120px]">
-                                    {app.company || '-'}
-                                  </td>
-                                  <td className="py-3 px-4 text-center">
-                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${getStatusColor(app.status)}`}>
-                                      {app.status?.replace('_', ' ')}
-                                    </span>
-                                  </td>
-                                  <td className="py-3 px-4 text-center font-bold text-xs">
-                                    <span className={getScoreColorClass(app.match_score)}>
-                                      {app.match_score ? `${app.match_score}%` : 'N/A'}
-                                    </span>
-                                  </td>
-                                  <td className="py-3 px-4 text-brand-textSecondary">
-                                    {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'Unknown'}
-                                  </td>
+                        <>
+                          <div className="hidden md:block overflow-x-auto border border-brand-border/40 rounded-xl">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="bg-brand-panelLight/40 border-b border-brand-border/60 font-semibold text-brand-textSecondary uppercase">
+                                  <th className="py-3 px-4">Job Title</th>
+                                  <th className="py-3 px-4">Company</th>
+                                  <th className="py-3 px-4 text-center">Status</th>
+                                  <th className="py-3 px-4 text-center">AI Match Score</th>
+                                  <th className="py-3 px-4">Applied Date</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                              </thead>
+                              <tbody className="divide-y divide-brand-border/40">
+                                {candidateDetails.applications.map((app, aIdx) => (
+                                  <tr key={app.id || aIdx} className="hover:bg-brand-panelLight/20">
+                                    <td className="py-3 px-4 font-semibold text-brand-textPrimary truncate max-w-[150px]">
+                                      {app.job_title}
+                                    </td>
+                                    <td className="py-3 px-4 text-brand-textSecondary truncate max-w-[120px]">
+                                      {app.company || '-'}
+                                    </td>
+                                    <td className="py-3 px-4 text-center">
+                                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider ${getStatusColor(app.status)}`}>
+                                        {app.status?.replace('_', ' ')}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-4 text-center font-bold text-xs">
+                                      <span className={getScoreColorClass(app.match_score)}>
+                                        {app.match_score ? `${app.match_score}%` : 'N/A'}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-4 text-brand-textSecondary">
+                                      {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'Unknown'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="md:hidden space-y-3">
+                            {candidateDetails.applications.map((app, aIdx) => (
+                              <div key={app.id || aIdx} className="border border-brand-border/40 p-4 rounded-xl bg-brand-panelLight/15 space-y-3">
+                                <div>
+                                  <h5 className="font-bold text-brand-textPrimary text-xs">{app.job_title}</h5>
+                                  <p className="text-brand-textSecondary text-[10px]">{app.company || '-'}</p>
+                                </div>
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className={`px-2 py-0.5 rounded-md font-bold border uppercase tracking-wider ${getStatusColor(app.status)}`}>
+                                    {app.status?.replace('_', ' ')}
+                                  </span>
+                                  <span className={`font-bold ${getScoreColorClass(app.match_score)}`}>
+                                    Match: {app.match_score ? `${app.match_score}%` : 'N/A'}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-brand-textSecondary">
+                                  Applied: {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'Unknown'}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </div>
                   </>
