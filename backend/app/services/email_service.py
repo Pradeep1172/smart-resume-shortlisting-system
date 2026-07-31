@@ -1,3 +1,5 @@
+import os
+import requests
 import random
 import smtplib
 import ssl
@@ -203,50 +205,27 @@ def _build_otp_html(name: str, otp: str) -> str:
 
 
 def _smtp_send(to_email: str, otp: str, name: str) -> None:
-    """
-    Inner function that performs the actual SMTP connection and send.
-    Called both directly and from background thread.
-    Raises RuntimeError on any failure.
-    """
-    smtp_host = Config.SMTP_HOST
-    smtp_port = Config.SMTP_PORT
-    smtp_user = Config.SMTP_USER
-    smtp_password = Config.SMTP_PASSWORD
-    smtp_from = Config.SMTP_FROM or smtp_user
-
     subject = "ShortlistIQ — Your Email Verification Code"
 
-    # ── Build MIME message ──────────────────────────────────────────────────
-    msg = MIMEMultipart("alternative")
-    msg["From"] = smtp_from
-    msg["To"] = to_email
-    msg["Subject"] = subject
-    msg["X-Mailer"] = "ShortlistIQ Mailer"
-    msg["X-Priority"] = "1"  # mark as high-priority for faster inbox placement
-
-    plain_text = (
-        f"Hello {name},\n\n"
-        f"Your ShortlistIQ verification code is: {otp}\n\n"
-        f"This code expires in {OTP_VALIDITY_MINUTES} minutes. Do not share it.\n\n"
-        f"If you did not create a ShortlistIQ account, please ignore this email.\n\n"
-        f"Need help? Contact: shortlistiq.official@gmail.com\n\n"
-        f"— ShortlistIQ Team\n"
-        f"© 2026 ShortlistIQ · AI-Powered Recruitment Platform"
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {os.environ['RESEND_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "from": "onboarding@resend.dev",
+            "to": [to_email],
+            "subject": subject,
+            "html": _build_otp_html(name, otp),
+            "text": f"Your OTP is {otp}",
+        },
     )
-    msg.attach(MIMEText(plain_text, "plain"))
-    msg.attach(MIMEText(_build_otp_html(name, otp), "html"))
 
-    # ── Send via SMTP STARTTLS ─────────────────────────────────────────────
-    context = ssl.create_default_context()
-    with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-        server.ehlo()
-        server.starttls(context=context)
-        server.ehlo()
-        server.login(smtp_user, smtp_password)
-        server.sendmail(smtp_from, [to_email], msg.as_string())
+    if response.status_code not in (200, 201):
+        raise RuntimeError(response.text)
 
     print(f"[ShortlistIQ] [OK] OTP email delivered to {to_email}")
-
 
 def send_otp_email(to_email: str, otp: str, name: str) -> bool:
     """
