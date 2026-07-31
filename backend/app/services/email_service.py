@@ -212,6 +212,12 @@ def _smtp_send(to_email: str, otp: str, name: str) -> None:
     smtp_password = Config.SMTP_PASSWORD
     smtp_port = Config.SMTP_PORT
     smtp_from = Config.SMTP_FROM or smtp_user
+    
+    print("SMTP_HOST =", smtp_host)
+    print("SMTP_PORT =", smtp_port)
+    print("SMTP_USER =", smtp_user)
+    print("SMTP_FROM =", smtp_from)
+    print("SMTP_USE_TLS =", Config.SMTP_USE_TLS)
 
     msg = MIMEMultipart("alternative")
     msg["From"] = smtp_from
