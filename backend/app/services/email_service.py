@@ -207,23 +207,31 @@ def _build_otp_html(name: str, otp: str) -> str:
 def _smtp_send(to_email: str, otp: str, name: str) -> None:
     subject = "ShortlistIQ — Your Email Verification Code"
 
-    response = requests.post(
-        "https://api.resend.com/emails",
-        headers={
-            "Authorization": f"Bearer {os.environ['RESEND_API_KEY']}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "from": "onboarding@resend.dev",
-            "to": [to_email],
-            "subject": subject,
-            "html": _build_otp_html(name, otp),
-            "text": f"Your OTP is {otp}",
-        },
-    )
+    smtp_host = Config.SMTP_HOST
+    smtp_user = Config.SMTP_USER
+    smtp_password = Config.SMTP_PASSWORD
+    smtp_port = Config.SMTP_PORT
+    smtp_from = Config.SMTP_FROM or smtp_user
 
-    if response.status_code not in (200, 201):
-        raise RuntimeError(response.text)
+    msg = MIMEMultipart("alternative")
+    msg["From"] = smtp_from
+    msg["To"] = to_email
+    msg["Subject"] = subject
+
+    html = _build_otp_html(name, otp)
+    plain = f"Your OTP is {otp}"
+
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    context = ssl.create_default_context()
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+        server.ehlo()
+        server.starttls(context=context)
+        server.ehlo()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_from, [to_email], msg.as_string())
 
     print(f"[ShortlistIQ] [OK] OTP email delivered to {to_email}")
 
