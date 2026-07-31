@@ -210,7 +210,7 @@ def _smtp_send(to_email: str, otp: str, name: str) -> None:
     smtp_host = Config.SMTP_HOST
     smtp_user = Config.SMTP_USER
     smtp_password = Config.SMTP_PASSWORD
-    smtp_port = Config.SMTP_PORT
+    smtp_port = 2525
     smtp_from = Config.SMTP_FROM or smtp_user
 
     print("SMTP_HOST =", smtp_host)
