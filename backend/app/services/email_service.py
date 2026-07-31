@@ -212,7 +212,7 @@ def _smtp_send(to_email: str, otp: str, name: str) -> None:
     smtp_password = Config.SMTP_PASSWORD
     smtp_port = Config.SMTP_PORT
     smtp_from = Config.SMTP_FROM or smtp_user
-    
+
     print("SMTP_HOST =", smtp_host)
     print("SMTP_PORT =", smtp_port)
     print("SMTP_USER =", smtp_user)
@@ -232,12 +232,26 @@ def _smtp_send(to_email: str, otp: str, name: str) -> None:
 
     context = ssl.create_default_context()
 
+    print("STEP 1: Connecting to SMTP...")
+
     with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+
+        print("STEP 2: Connected")
+
         server.ehlo()
+        print("STEP 3: EHLO Success")
+
         server.starttls(context=context)
+        print("STEP 4: TLS Started")
+
         server.ehlo()
+        print("STEP 5: EHLO after TLS")
+
         server.login(smtp_user, smtp_password)
+        print("STEP 6: Login Success")
+
         server.sendmail(smtp_from, [to_email], msg.as_string())
+        print("STEP 7: Email Sent")
 
     print(f"[ShortlistIQ] [OK] OTP email delivered to {to_email}")
 
