@@ -51,7 +51,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-brand-primary" />
-                <a href="https://shortlistiq-dev.vercel.app" className="hover:text-white transition-colors">https://shortlistiq-dev.vercel.app</a>
+                <a href="http://localhost:5173" className="hover:text-white transition-colors">http://localhost:5173</a>
               </li>
               <li className="flex items-center gap-2 mt-4 pt-4 border-t border-brand-border/20">
                 <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-2">

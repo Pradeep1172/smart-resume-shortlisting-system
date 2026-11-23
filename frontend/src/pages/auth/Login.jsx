@@ -40,7 +40,7 @@ export default function Login() {
     if (!email || !password) { setError('Please fill in all fields'); return; }
     setError('');
     setLoading(true);
-    const result = await login(email, password);
+    const result = await login(email, password, rememberMe);
     setLoading(false);
     if (result.success) {
       setShowPostLoginSplash(true);

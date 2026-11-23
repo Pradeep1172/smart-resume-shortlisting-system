@@ -1,5 +1,0 @@
-content = open('clean_dashboard.jsx', 'r', encoding='utf-8').read()
-content = content.replace('G£ô', '?')
-content = content.replace('=ƒÄë', '??')
-content = content.replace('GùÅ', '?')
-open('clean_dashboard.jsx', 'w', encoding='utf-8').write(content)

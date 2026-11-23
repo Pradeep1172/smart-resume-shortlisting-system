@@ -3,6 +3,10 @@
 .env.local
 .env.*.local
 backend/.env
+certs/
+backend/certs/
+*.pem
+*.crt
 
 # Python Virtual Environments
 venv/

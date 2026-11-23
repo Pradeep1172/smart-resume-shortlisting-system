@@ -334,7 +334,8 @@ export default function ExternalHiringTab() {
   // View Resume file
   const handleViewResume = (candId) => {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-    window.open(`http://localhost:5000/api/external-hiring/candidates/${candId}/resume?token=${token}`, '_blank');
+    const apiBase = API.defaults.baseURL || 'http://localhost:5000/api';
+    window.open(`${apiBase}/external-hiring/candidates/${candId}/resume?token=${token}`, '_blank');
   };
 
   // Shortlisting generation
@@ -435,7 +436,8 @@ export default function ExternalHiringTab() {
       return;
     }
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-    window.open(`http://localhost:5000/api/external-hiring/jobs/${selectedJob.id}/download-shortlisted-resumes?token=${token}`, '_blank');
+    const apiBase = API.defaults.baseURL || 'http://localhost:5000/api';
+    window.open(`${apiBase}/external-hiring/jobs/${selectedJob.id}/download-shortlisted-resumes?token=${token}`, '_blank');
   };
 
   // Stats Calculations for Landing Dashboard

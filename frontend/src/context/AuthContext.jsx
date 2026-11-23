@@ -8,15 +8,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = async () => {
-    let token = sessionStorage.getItem('token');
-    
-    // If opening a new tab, inherit from the last active window's session
-    if (!token) {
-      token = localStorage.getItem('token');
-      if (token) {
-        sessionStorage.setItem('token', token);
-      }
-    }
+    // Check sessionStorage first (session-only), or localStorage (if Remember Me was checked)
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
     if (!token) {
       setUser(null);
@@ -36,28 +29,22 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
-
-    // Sync session to localStorage on focus so new tabs inherit this window's session
-    const handleFocus = () => {
-      const currentToken = sessionStorage.getItem('token');
-      if (currentToken) {
-        localStorage.setItem('token', currentToken);
-      } else {
-        localStorage.removeItem('token');
-      }
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = false) => {
     setLoading(true);
     try {
       const response = await API.post('/auth/login', { email, password });
       const { token, user: userData } = response.data;
-      sessionStorage.setItem('token', token);
-      localStorage.setItem('token', token);
+
+      if (rememberMe) {
+        localStorage.setItem('token', token);
+        sessionStorage.removeItem('token');
+      } else {
+        sessionStorage.setItem('token', token);
+        localStorage.removeItem('token');
+      }
+
       sessionStorage.setItem('pendingPostLoginSplash', 'true');
       setUser(userData);
       return { success: true };

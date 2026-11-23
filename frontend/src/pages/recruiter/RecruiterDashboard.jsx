@@ -799,7 +799,8 @@ export default function RecruiterDashboard() {
 
   const handleViewResume = (resumeId) => {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-    window.open(`http://localhost:5000/api/resumes/${resumeId}/file?token=${token}`, '_blank');
+    const apiBase = API.defaults.baseURL || 'http://localhost:5000/api';
+    window.open(`${apiBase}/resumes/${resumeId}/file?token=${token}`, '_blank');
   };
 
   const exportToCSV = (selectedApps) => {
@@ -4034,7 +4035,7 @@ export default function RecruiterDashboard() {
                   </div>
                   {leftPaneTab === 'resume' && (
                     <a
-                      href={`http://localhost:5000/api/resumes/${selectedApp.resume_id}/file?token=${sessionStorage.getItem('token') || localStorage.getItem('token')}`}
+                      href={`${API.defaults.baseURL || 'http://localhost:5000/api'}/resumes/${selectedApp.resume_id}/file?token=${sessionStorage.getItem('token') || localStorage.getItem('token')}`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-xs text-brand-primary hover:text-brand-textPrimary flex items-center gap-1.5 font-bold transition-all pr-2"
@@ -4066,7 +4067,7 @@ export default function RecruiterDashboard() {
                         <div className="relative shrink-0 select-none">
                           {candidateProfile.has_photo ? (
                             <img
-                              src={`http://localhost:5000/api/profile/photo/${candidateProfile.candidate_id}`}
+                              src={`${API.defaults.baseURL || 'http://localhost:5000/api'}/profile/photo/${candidateProfile.candidate_id}`}
                               alt={candidateProfile.candidate_name}
                               className="w-20 h-20 rounded-full border-4 border-brand-primary/30 object-cover shadow-premium bg-brand-bg"
                               onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
@@ -4231,14 +4232,14 @@ export default function RecruiterDashboard() {
                     ) ? (
                       <div className="w-full flex-1 rounded-2xl border border-brand-border/60 bg-brand-bg shadow-premium overflow-auto p-2 flex items-center justify-center">
                         <img
-                          src={`http://localhost:5000/api/resumes/${selectedApp.resume_id}/file?token=${sessionStorage.getItem('token') || localStorage.getItem('token')}`}
+                          src={`${API.defaults.baseURL || 'http://localhost:5000/api'}/resumes/${selectedApp.resume_id}/file?token=${sessionStorage.getItem('token') || localStorage.getItem('token')}`}
                           className="max-w-full max-h-[75vh] object-contain rounded-xl"
                           alt="Candidate Resume image"
                         />
                       </div>
                     ) : (
                       <iframe
-                        src={`http://localhost:5000/api/resumes/${selectedApp.resume_id}/file?token=${sessionStorage.getItem('token') || localStorage.getItem('token')}`}
+                        src={`${API.defaults.baseURL || 'http://localhost:5000/api'}/resumes/${selectedApp.resume_id}/file?token=${sessionStorage.getItem('token') || localStorage.getItem('token')}`}
                         className="w-full flex-1 rounded-2xl border border-brand-border/60 bg-brand-bg shadow-premium"
                         title="Resume PDF Document Viewer"
                       />

@@ -1385,8 +1385,8 @@ export default function Landing() {
                   </div>
                   <div>
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Official Website</p>
-                    <a href="https://shortlistiq-dev.vercel.app" target="_blank" rel="noreferrer" className="text-xs font-extrabold text-slate-700 hover:text-brand-secondary transition-colors">
-                      https://shortlistiq-dev.vercel.app
+                    <a href="http://localhost:5173" target="_blank" rel="noreferrer" className="text-xs font-extrabold text-slate-700 hover:text-brand-secondary transition-colors">
+                      http://localhost:5173
                     </a>
                   </div>
                 </div>
