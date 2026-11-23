@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import logging
 from datetime import datetime, timezone
 from django.conf import settings
 from django.http import JsonResponse
@@ -12,6 +13,8 @@ from services.email_service import (
     generate_otp, get_otp_expiry, send_otp_email, OTP_VALIDITY_MINUTES
 )
 from services.storage_service import save_file, delete_file, get_local_uploads_dir
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_LOGO_EXTS = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
 
@@ -71,7 +74,12 @@ def register(request):
         if ext not in ALLOWED_LOGO_EXTS:
             return JsonResponse({"message": "Invalid logo file type. Allowed: jpg, jpeg, png, webp, gif"}, status=400)
 
-    existing = User.objects.filter(email=email).first()
+    try:
+        existing = User.objects.filter(email=email).first()
+    except Exception as db_err:
+        logger.error("Database error during registration user lookup (%s): %s", email, db_err, exc_info=True)
+        return JsonResponse({"message": "Registration service is temporarily unavailable. Please try again later."}, status=500)
+
     if existing:
         if existing.email_verified:
             return JsonResponse({"message": "User with this email already exists!"}, status=409)
@@ -114,7 +122,8 @@ def register(request):
                 "otp": otp
             }, status=200)
         except Exception as ex:
-            return JsonResponse({"message": f"Pending registration update failed: {ex}"}, status=500)
+            logger.error("Pending registration update failed for %s: %s", email, ex, exc_info=True)
+            return JsonResponse({"message": "Unable to complete registration. Please try again later."}, status=500)
 
     try:
         new_user = User(
@@ -160,7 +169,8 @@ def register(request):
             "otp": otp
         }, status=201)
     except Exception as ex:
-        return JsonResponse({"message": f"Registration failed: {ex}"}, status=500)
+        logger.error("Registration failed for %s: %s", email, ex, exc_info=True)
+        return JsonResponse({"message": "Registration failed. Please try again later."}, status=500)
 
 
 @api_view(['POST'])
@@ -172,7 +182,11 @@ def verify_otp(request):
     if not email or not otp:
         return JsonResponse({"message": "Email and OTP are required"}, status=400)
 
-    user = User.objects.filter(email=email).first()
+    try:
+        user = User.objects.filter(email=email).first()
+    except Exception as db_err:
+        logger.error("Database error during OTP verification user lookup (%s): %s", email, db_err, exc_info=True)
+        return JsonResponse({"message": "Service is temporarily unavailable. Please try again later."}, status=500)
     if not user:
         return JsonResponse({"message": "Account not found"}, status=404)
 
@@ -222,7 +236,11 @@ def resend_otp(request):
     if not email:
         return JsonResponse({"message": "Email is required"}, status=400)
 
-    user = User.objects.filter(email=email).first()
+    try:
+        user = User.objects.filter(email=email).first()
+    except Exception as db_err:
+        logger.error("Database error during resend OTP user lookup (%s): %s", email, db_err, exc_info=True)
+        return JsonResponse({"message": "Service is temporarily unavailable. Please try again later."}, status=500)
     if not user:
         return JsonResponse({"message": "Account not found"}, status=404)
 
@@ -253,7 +271,11 @@ def login(request):
     if not email or not password:
         return JsonResponse({"message": "Email and password are required"}, status=400)
 
-    user = User.objects.filter(email=email).first()
+    try:
+        user = User.objects.filter(email=email).first()
+    except Exception as db_err:
+        logger.error("Database error during login user lookup (%s): %s", email, db_err, exc_info=True)
+        return JsonResponse({"message": "Authentication service is temporarily unavailable. Please try again later."}, status=500)
     if not user or not user.check_password(password):
         return JsonResponse({"message": "Invalid email or password!"}, status=401)
 

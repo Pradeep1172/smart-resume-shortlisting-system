@@ -1,4 +1,5 @@
 import os
+import ssl
 from pathlib import Path
 from dotenv import load_dotenv
 import pymysql
@@ -114,19 +115,34 @@ db_options = {
     'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
 }
 
-# Configure SSL/TLS verification if DB_SSL_CA is specified (TiDB Cloud)
-if DB_SSL_CA:
-    ca_candidate = os.path.abspath(os.path.join(str(BASE_DIR), DB_SSL_CA)) if not os.path.isabs(DB_SSL_CA) else DB_SSL_CA
-    if not os.path.exists(ca_candidate):
-        # Also check relative to workspace
-        alt_path = os.path.abspath(os.path.join(str(BASE_DIR.parent), DB_SSL_CA))
-        if os.path.exists(alt_path):
-            ca_candidate = alt_path
-    if os.path.exists(ca_candidate):
-        db_options['ssl'] = {
-            'ca': ca_candidate,
-            'check_hostname': True,
-        }
+# Configure SSL/TLS verification (Enforced for TiDB Cloud & remote databases)
+is_remote_db = DB_HOST not in ('localhost', '127.0.0.1', '')
+
+if DB_SSL_CA or is_remote_db:
+    ca_candidate = None
+    if DB_SSL_CA:
+        candidate = os.path.abspath(os.path.join(str(BASE_DIR), DB_SSL_CA)) if not os.path.isabs(DB_SSL_CA) else DB_SSL_CA
+        if not os.path.exists(candidate):
+            # Also check relative to workspace
+            alt_path = os.path.abspath(os.path.join(str(BASE_DIR.parent), DB_SSL_CA))
+            if os.path.exists(alt_path):
+                candidate = alt_path
+        if os.path.exists(candidate):
+            ca_candidate = candidate
+
+    if ca_candidate:
+        # Use explicitly configured CA certificate with full certificate & hostname verification
+        ssl_ctx = ssl.create_default_context(cafile=ca_candidate)
+        ssl_ctx.check_hostname = True
+        ssl_ctx.verify_mode = ssl.CERT_REQUIRED
+        db_options['ssl'] = ssl_ctx
+    elif is_remote_db:
+        # Remote host without local CA file: use Python/system trusted certificate store
+        # with full SSL certificate and hostname verification enabled (never insecure)
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = True
+        ssl_ctx.verify_mode = ssl.CERT_REQUIRED
+        db_options['ssl'] = ssl_ctx
 
 DATABASES = {
     'default': {
