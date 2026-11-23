@@ -10,6 +10,9 @@ from accounts.auth import auth_required
 from jobs.models import Job
 from applications.models import Application
 from admin_portal.models import SystemSetting
+from services.storage_service import (
+    save_file, delete_file, serve_file_response, file_exists, get_local_uploads_dir
+)
 
 ALLOWED_LOGO_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
 
@@ -180,24 +183,23 @@ def upload_logo(request):
     if ext not in ALLOWED_LOGO_EXTS:
         return JsonResponse({"message": "Invalid file type. Allowed: jpg, jpeg, png, webp, gif"}, status=400)
 
-    logos_dir = os.path.join(_get_uploads_dir(), "logos")
-    os.makedirs(logos_dir, exist_ok=True)
-
     timestamp = int(time.time())
     file_name = f"recruiter_{user.id}_{timestamp}{ext}"
-    abs_file_path = os.path.join(logos_dir, file_name)
+    storage_key = f"logos/{file_name}"
 
-    if user.company_logo_path and os.path.exists(user.company_logo_path):
-        try:
-            os.remove(user.company_logo_path)
-        except Exception:
-            pass
+    content_type = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif'
+    }.get(ext, 'application/octet-stream')
 
-    with open(abs_file_path, 'wb') as dest:
-        for chunk in logo.chunks():
-            dest.write(chunk)
+    if user.company_logo_path:
+        delete_file(user.company_logo_path)
 
-    user.company_logo_path = abs_file_path
+    saved_path = save_file(logo, storage_key, content_type)
+    user.company_logo_path = saved_path
     user.save(update_fields=['company_logo_path'])
 
     return JsonResponse({
@@ -209,19 +211,10 @@ def upload_logo(request):
 @api_view(['GET'])
 def get_logo(request, user_id):
     recruiter = User.objects.filter(id=user_id).first()
-    if not recruiter or not recruiter.company_logo_path:
+    if not recruiter or not recruiter.company_logo_path or not file_exists(recruiter.company_logo_path):
         return JsonResponse({"message": "No logo found"}, status=404)
 
-    path = recruiter.company_logo_path
-    if not os.path.exists(path):
-        file_name = os.path.basename(path)
-        fallback = os.path.join(_get_uploads_dir(), "logos", file_name)
-        if os.path.exists(fallback):
-            path = fallback
-        else:
-            return JsonResponse({"message": "No logo file found on disk"}, status=404)
-
-    _, ext = os.path.splitext(path)
+    _, ext = os.path.splitext(recruiter.company_logo_path)
     ext = ext.lower()
     content_type = {
         '.png': 'image/png',
@@ -231,4 +224,4 @@ def get_logo(request, user_id):
         '.gif': 'image/gif'
     }.get(ext, 'application/octet-stream')
 
-    return FileResponse(open(path, 'rb'), content_type=content_type)
+    return serve_file_response(request, recruiter.company_logo_path, os.path.basename(recruiter.company_logo_path), content_type)

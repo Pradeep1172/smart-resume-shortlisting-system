@@ -106,18 +106,29 @@ def extract_text_from_image_via_gemini(file_path: str) -> str:
 
 
 def extract_text(file_path: str) -> str:
-    if not os.path.exists(file_path):
+    if not file_path:
         return ""
 
-    ext = Path(file_path).suffix.lower().lstrip('.')
-    if ext == "pdf":
-        return extract_text_from_pdf(file_path)
-    elif ext == "docx":
-        return extract_text_from_docx(file_path)
-    elif ext == "doc":
-        return extract_text_from_doc(file_path)
-    elif ext in ("png", "jpg", "jpeg", "webp"):
-        return extract_text_from_image_via_gemini(file_path)
+    from services.storage_service import open_or_download_temp
+
+    try:
+        with open_or_download_temp(file_path) as local_path:
+            if not os.path.exists(local_path):
+                return ""
+
+            ext = Path(local_path).suffix.lower().lstrip('.')
+            if ext == "pdf":
+                return extract_text_from_pdf(local_path)
+            elif ext == "docx":
+                return extract_text_from_docx(local_path)
+            elif ext == "doc":
+                return extract_text_from_doc(local_path)
+            elif ext in ("png", "jpg", "jpeg", "webp"):
+                return extract_text_from_image_via_gemini(local_path)
+    except Exception as ex:
+        print(f"Error during extract_text for {file_path}: {ex}")
+        return ""
+
     return ""
 
 
@@ -260,11 +271,7 @@ def calculate_resume_confidence(text: str) -> int:
 
 
 def parse_resume(file_path: str) -> dict:
-    ext = Path(file_path).suffix.lower().lstrip('.')
-    if ext in ("png", "jpg", "jpeg", "webp"):
-        text = extract_text_from_image_via_gemini(file_path)
-    else:
-        text = extract_text(file_path)
+    text = extract_text(file_path)
 
     skills = parse_skills(text)
     exp_years = parse_experience_years(text)

@@ -24,6 +24,8 @@ dist/
 dist-ssr/
 frontend/dist/
 out/
+staticfiles/
+backend/staticfiles/
 
 # User Uploaded Resumes / Directories
 uploads/

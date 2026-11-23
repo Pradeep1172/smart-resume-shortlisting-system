@@ -8,6 +8,9 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from accounts.models import User
 from accounts.auth import auth_required
 from candidates.models import CandidateProfile
+from services.storage_service import (
+    save_file, delete_file, serve_file_response, file_exists, get_local_uploads_dir
+)
 
 ALLOWED_PHOTO_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
 
@@ -58,11 +61,7 @@ def photo_handler(request):
     if request.method == 'DELETE':
         profile = CandidateProfile.objects.filter(user_id=user.id).first()
         if profile and profile.photo_path:
-            if os.path.exists(profile.photo_path):
-                try:
-                    os.remove(profile.photo_path)
-                except Exception:
-                    pass
+            delete_file(profile.photo_path)
             profile.photo_path = None
             profile.updated_at = datetime.now(timezone.utc)
             profile.save()
@@ -79,28 +78,27 @@ def photo_handler(request):
     if ext not in ALLOWED_PHOTO_EXTS:
         return JsonResponse({"message": "Invalid file type. Allowed: jpg, jpeg, png, webp, gif"}, status=400)
 
-    photos_dir = os.path.join(_get_uploads_dir(), "photos")
-    os.makedirs(photos_dir, exist_ok=True)
-
     timestamp = int(time.time())
     file_name = f"candidate_{user.id}_{timestamp}{ext}"
-    abs_file_path = os.path.join(photos_dir, file_name)
+    storage_key = f"photos/{file_name}"
+
+    content_type = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif'
+    }.get(ext, 'application/octet-stream')
 
     profile = CandidateProfile.objects.filter(user_id=user.id).first()
     if not profile:
         profile = CandidateProfile(user_id=user.id)
 
-    if profile.photo_path and os.path.exists(profile.photo_path):
-        try:
-            os.remove(profile.photo_path)
-        except Exception:
-            pass
+    if profile.photo_path:
+        delete_file(profile.photo_path)
 
-    with open(abs_file_path, 'wb') as dest:
-        for chunk in photo.chunks():
-            dest.write(chunk)
-
-    profile.photo_path = abs_file_path
+    saved_path = save_file(photo, storage_key, content_type)
+    profile.photo_path = saved_path
     profile.updated_at = datetime.now(timezone.utc)
     profile.save()
 
@@ -113,19 +111,10 @@ def photo_handler(request):
 @api_view(['GET'])
 def get_photo(request, user_id):
     profile = CandidateProfile.objects.filter(user_id=user_id).first()
-    if not profile or not profile.photo_path:
+    if not profile or not profile.photo_path or not file_exists(profile.photo_path):
         return JsonResponse({"message": "No photo found"}, status=404)
 
-    path = profile.photo_path
-    if not os.path.exists(path):
-        file_name = os.path.basename(path)
-        fallback = os.path.join(_get_uploads_dir(), "photos", file_name)
-        if os.path.exists(fallback):
-            path = fallback
-        else:
-            return JsonResponse({"message": "No photo found"}, status=404)
-
-    _, ext = os.path.splitext(path)
+    _, ext = os.path.splitext(profile.photo_path)
     ext = ext.lower()
     content_type = {
         '.png': 'image/png',
@@ -135,4 +124,4 @@ def get_photo(request, user_id):
         '.gif': 'image/gif'
     }.get(ext, 'application/octet-stream')
 
-    return FileResponse(open(path, 'rb'), content_type=content_type)
+    return serve_file_response(request, profile.photo_path, os.path.basename(profile.photo_path), content_type)

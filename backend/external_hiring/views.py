@@ -22,6 +22,10 @@ from services.match_service import (
     generate_pool_quick_analysis, generate_pool_ai_analysis
 )
 from services.email_service import send_shortlist_email
+from services.storage_service import (
+    save_file, delete_file, serve_file_response, file_exists,
+    safe_extract_zip, open_or_download_temp, get_local_uploads_dir
+)
 
 ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp'}
 
@@ -171,33 +175,23 @@ def upload_external_resumes(request, job_id):
 
         if file_name.lower().endswith('.zip'):
             temp_zip_dir = os.path.join(ext_uploads_dir, f"temp_zip_{int(time.time() * 1000)}")
-            os.makedirs(temp_zip_dir, exist_ok=True)
-            zip_path = os.path.join(temp_zip_dir, os.path.basename(file_name))
-
             try:
-                with open(zip_path, 'wb') as f:
-                    for chunk in up_file.chunks():
-                        f.write(chunk)
+                extracted = safe_extract_zip(up_file, temp_zip_dir, ALLOWED_EXTENSIONS)
+                for b_name, local_extracted_path in extracted:
+                    safe_name = b_name.replace(" ", "_")
+                    time_ms = int(time.time() * 1000)
+                    dest_name = f"job_{job_id}_{time_ms}_{safe_name}"
+                    _, ext = os.path.splitext(b_name)
+                    content_type = {
+                        '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.doc': 'application/msword',
+                        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    }.get(ext.lower(), 'application/octet-stream')
 
-                with zipfile.ZipFile(zip_path, 'r') as zf:
-                    zf.extractall(temp_zip_dir)
-
-                for root, _, files in os.walk(temp_zip_dir):
-                    for f in files:
-                        b_name = os.path.basename(f)
-                        if b_name.lower().endswith('.zip') or b_name.startswith('__MACOSX') or b_name.startswith('.'):
-                            continue
-                        _, ext = os.path.splitext(b_name)
-                        if ext.lower() not in ALLOWED_EXTENSIONS:
-                            skipped_files.append({"filename": b_name, "reason": "Unsupported file format"})
-                            continue
-
-                        safe_name = b_name.replace(" ", "_")
-                        time_ms = int(time.time() * 1000)
-                        dest_name = f"job_{job_id}_{time_ms}_{safe_name}"
-                        dest_path = os.path.join(ext_uploads_dir, dest_name)
-                        shutil.copyfile(os.path.join(root, f), dest_path)
-                        files_to_process.append((b_name, dest_path))
+                    with open(local_extracted_path, 'rb') as f:
+                        file_bytes = f.read()
+                    stored_path = save_file(file_bytes, f"external_resumes/{dest_name}", content_type)
+                    files_to_process.append((b_name, stored_path))
             except Exception as ex:
                 skipped_files.append({"filename": file_name, "reason": f"Failed to extract ZIP: {ex}"})
             finally:
@@ -214,28 +208,26 @@ def upload_external_resumes(request, job_id):
             safe_name = os.path.basename(file_name).replace(" ", "_")
             time_ms = int(time.time() * 1000)
             dest_name = f"job_{job_id}_{time_ms}_{safe_name}"
-            dest_path = os.path.join(ext_uploads_dir, dest_name)
+            content_type = {
+                '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.doc': 'application/msword',
+                '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            }.get(ext.lower(), 'application/octet-stream')
 
             try:
-                with open(dest_path, 'wb') as f:
-                    for chunk in up_file.chunks():
-                        f.write(chunk)
-                files_to_process.append((file_name, dest_path))
+                stored_path = save_file(up_file, f"external_resumes/{dest_name}", content_type)
+                files_to_process.append((file_name, stored_path))
             except Exception as ex:
                 skipped_files.append({"filename": file_name, "reason": f"File save failed: {ex}"})
 
-    for original_name, temp_path in files_to_process:
+    for original_name, stored_path in files_to_process:
         try:
-            parsed_data = parse_resume(temp_path)
+            parsed_data = parse_resume(stored_path)
             extracted_text = parsed_data.get("extracted_text", "")
             confidence = calculate_resume_confidence(extracted_text)
 
             if confidence < 30:
-                try:
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
-                except Exception:
-                    pass
+                delete_file(stored_path)
                 skipped_files.append({
                     "filename": original_name,
                     "reason": "Document does not appear to be a valid resume"
@@ -257,7 +249,7 @@ def upload_external_resumes(request, job_id):
                 email=parsed_data.get("email"),
                 phone=parsed_data.get("phone"),
                 file_name=original_name,
-                file_path=temp_path,
+                file_path=stored_path,
                 extracted_text=extracted_text,
                 skills=json.dumps(skills),
                 experience_years=experience_years,
@@ -269,11 +261,7 @@ def upload_external_resumes(request, job_id):
             processed_candidates.append(new_cand)
             success_count += 1
         except Exception as ex:
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except Exception:
-                    pass
+            delete_file(stored_path)
             skipped_files.append({"filename": original_name, "reason": f"Parsing failed: {ex}"})
 
     try:
@@ -568,14 +556,8 @@ def get_external_candidate_resume(request, candidate_id):
     if user.role == 'recruiter' and job and job.recruiter_id != user.id:
         return JsonResponse({"message": "Access forbidden"}, status=403)
 
-    resolved_path = cand.file_path
-    if not resolved_path or not os.path.exists(resolved_path):
-        bname = os.path.basename(resolved_path) if resolved_path else cand.file_name
-        fallback = os.path.join(_get_ext_uploads_dir(), bname)
-        if os.path.exists(fallback):
-            resolved_path = fallback
-        else:
-            return JsonResponse({"message": "Resume file not found on disk"}, status=404)
+    if not cand.file_path or not file_exists(cand.file_path):
+        return JsonResponse({"message": "Resume file not found"}, status=404)
 
     _, ext = os.path.splitext(cand.file_name)
     content_type = {
@@ -586,7 +568,7 @@ def get_external_candidate_resume(request, candidate_id):
         '.webp': 'image/webp',
     }.get(ext.lower(), 'application/octet-stream')
 
-    return FileResponse(open(resolved_path, 'rb'), content_type=content_type)
+    return serve_file_response(request, cand.file_path, cand.file_name, content_type)
 
 
 @api_view(['DELETE'])
@@ -601,11 +583,8 @@ def delete_external_candidate(request, candidate_id):
     if user.role == 'recruiter' and job and job.recruiter_id != user.id:
         return JsonResponse({"message": "Access forbidden"}, status=403)
 
-    if cand.file_path and os.path.exists(cand.file_path):
-        try:
-            os.remove(cand.file_path)
-        except Exception:
-            pass
+    if cand.file_path:
+        delete_file(cand.file_path)
 
     cand.delete()
     if job:
@@ -634,24 +613,23 @@ def download_shortlisted_resumes(request, job_id):
     with zipfile.ZipFile(mem_stream, 'w', zipfile.ZIP_DEFLATED) as zf:
         added_names = set()
         for cand in shortlisted:
-            path = cand.file_path
-            if not path or not os.path.exists(path):
-                fallback = os.path.join(_get_ext_uploads_dir(), os.path.basename(path or cand.file_name))
-                if os.path.exists(fallback):
-                    path = fallback
-                else:
-                    continue
+            if not cand.file_path or not file_exists(cand.file_path):
+                continue
 
             file_name = cand.file_name
             if file_name.lower() in added_names:
                 bname, ext = os.path.splitext(file_name)
                 file_name = f"{bname}_{cand.external_candidate_id}{ext}"
-            added_names.add(file_name.lower())
 
-            zf.write(path, arcname=file_name)
+            try:
+                with open_or_download_temp(cand.file_path) as local_temp:
+                    zf.write(local_temp, arcname=file_name)
+                added_names.add(file_name.lower())
+            except Exception as ex:
+                continue
 
         if not added_names:
-            return JsonResponse({"message": "Shortlisted resumes files not found on disk."}, status=404)
+            return JsonResponse({"message": "Shortlisted resumes files not found on storage."}, status=404)
 
     mem_stream.seek(0)
     safe_title = (job.title or "job").lower().replace(" ", "_")

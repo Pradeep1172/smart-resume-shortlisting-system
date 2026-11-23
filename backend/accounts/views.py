@@ -11,6 +11,7 @@ from accounts.auth import generate_token, auth_required
 from services.email_service import (
     generate_otp, get_otp_expiry, send_otp_email, OTP_VALIDITY_MINUTES
 )
+from services.storage_service import save_file, delete_file, get_local_uploads_dir
 
 ALLOWED_LOGO_EXTS = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
 
@@ -89,13 +90,14 @@ def register(request):
                     ext = logo_file.name.rsplit('.', 1)[-1].lower()
                     timestamp = int(time.time())
                     filename = f"recruiter_{existing.id}_{timestamp}.{ext}"
-                    logos_dir = os.path.join(_get_uploads_dir(), "logos")
-                    os.makedirs(logos_dir, exist_ok=True)
-                    file_path = os.path.join(logos_dir, filename)
-                    with open(file_path, 'wb') as dest:
-                        for chunk in logo_file.chunks():
-                            dest.write(chunk)
-                    existing.company_logo_path = file_path
+                    storage_key = f"logos/{filename}"
+                    content_type = {
+                        'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                        'webp': 'image/webp', 'gif': 'image/gif'
+                    }.get(ext, 'application/octet-stream')
+                    if existing.company_logo_path:
+                        delete_file(existing.company_logo_path)
+                    existing.company_logo_path = save_file(logo_file, storage_key, content_type)
 
             otp = generate_otp()
             existing.otp_code = otp
@@ -135,13 +137,13 @@ def register(request):
             ext = logo_file.name.rsplit('.', 1)[-1].lower()
             timestamp = int(time.time())
             filename = f"recruiter_{new_user.id}_{timestamp}.{ext}"
-            logos_dir = os.path.join(_get_uploads_dir(), "logos")
-            os.makedirs(logos_dir, exist_ok=True)
-            file_path = os.path.join(logos_dir, filename)
-            with open(file_path, 'wb') as dest:
-                for chunk in logo_file.chunks():
-                    dest.write(chunk)
-            new_user.company_logo_path = file_path
+            storage_key = f"logos/{filename}"
+            content_type = {
+                'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+                'webp': 'image/webp', 'gif': 'image/gif'
+            }.get(ext, 'application/octet-stream')
+            new_user.company_logo_path = save_file(logo_file, storage_key, content_type)
+            new_user.save(update_fields=['company_logo_path'])
 
         otp = generate_otp()
         new_user.otp_code = otp

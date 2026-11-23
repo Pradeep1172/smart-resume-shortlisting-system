@@ -27,10 +27,21 @@ for p in env_paths:
     if p.exists():
         load_dotenv(p, override=True)
 
-# Quick-start development settings - unsuitable for production
+# Production and development settings
 SECRET_KEY = os.getenv('SECRET_KEY', 'shortlistiq-django-secret-key-2026')
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 't')
+
+allowed_hosts_raw = os.getenv('ALLOWED_HOSTS', '')
+if allowed_hosts_raw:
+    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = ['*'] if DEBUG else ['localhost', '127.0.0.1', '.onrender.com']
+
+if '.onrender.com' not in ALLOWED_HOSTS and '*' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('.onrender.com')
+
+# Proxy SSL Header (Render terminates SSL at edge load balancer)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Application definition
 INSTALLED_APPS = [
@@ -44,6 +55,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'corsheaders',
+    'storages',
 
     # Project apps
     'accounts',
@@ -60,6 +72,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'accounts.auth.JwtAuthMiddleware',
@@ -140,8 +153,20 @@ REST_FRAMEWORK = {
     'UNAUTHENTICATED_USER': None,
 }
 
-# CORS settings
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS & CSRF settings
+cors_raw = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if cors_raw:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_raw.split(',') if o.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        'https://shortlistiq-dev.vercel.app',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ]
+
+CORS_ALLOW_ALL_ORIGINS = True if DEBUG and not cors_raw else False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -155,17 +180,41 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+csrf_raw = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if csrf_raw:
+    CSRF_TRUSTED_ORIGINS = [c.strip() for c in csrf_raw.split(',') if c.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        'https://shortlistiq-dev.vercel.app',
+        'https://*.onrender.com',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ]
+
 # Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static & Upload files
-STATIC_URL = 'static/'
+# Static & Upload files (WhiteNoise production configuration)
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', './uploads')
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.abspath(os.path.join(str(BASE_DIR.parent), 'uploads'))
+
+# Cloudflare R2 / S3 Storage Configuration
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '').strip()
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '').strip()
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '').strip()
+AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', '').strip()
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'auto').strip()
+AWS_S3_SIGNATURE_VERSION = os.getenv('AWS_S3_SIGNATURE_VERSION', 's3v4').strip()
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

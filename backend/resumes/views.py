@@ -16,6 +16,9 @@ from services.resume_parser_service import (
     parse_resume, calculate_resume_confidence
 )
 from services.match_service import calculate_ats_score
+from services.storage_service import (
+    save_file, delete_file, serve_file_response, file_exists, get_local_uploads_dir
+)
 
 ALLOWED_RESUME_EXTS = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp'}
 MIN_RESUME_TEXT_LENGTH = 150
@@ -70,27 +73,32 @@ def upload_resume(request):
             "error_type": "invalid_file_type"
         }, status=400)
 
-    uploads_dir = _get_uploads_dir()
+    content_type = {
+        '.pdf': 'application/pdf',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.webp': 'image/webp',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    }.get(ext, 'application/octet-stream')
+
     timestamp = int(time.time())
     safe_name = os.path.basename(file.name).replace(" ", "_")
     unique_file_name = f"user_{user.id}_{timestamp}_{safe_name}"
-    file_path = os.path.join(uploads_dir, unique_file_name)
+    storage_key = f"resumes/{unique_file_name}"
 
+    file_path = None
     try:
-        with open(file_path, 'wb') as dest:
-            for chunk in file.chunks():
-                dest.write(chunk)
+        file_path = save_file(file, storage_key, content_type)
 
         parsed_data = parse_resume(file_path)
         extracted_text = parsed_data.get("extracted_text", "")
 
         confidence = calculate_resume_confidence(extracted_text)
         if confidence < 35:
-            try:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            except Exception:
-                pass
+            if file_path:
+                delete_file(file_path)
             return JsonResponse({
                 "message": "Invalid Resume File",
                 "detail": "This document does not appear to be a valid resume. Please upload a professional resume or CV.",
@@ -129,11 +137,8 @@ def upload_resume(request):
 
         return JsonResponse(payload, status=201)
     except Exception as ex:
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
+        if file_path:
+            delete_file(file_path)
         return JsonResponse({"message": f"Failed to process resume: {ex}"}, status=500)
 
 
@@ -313,12 +318,8 @@ def resume_detail_delete(request, resume_id):
             return JsonResponse({"message": "Access forbidden: you do not own this resume!"}, status=403)
 
         try:
-            resolved_path = _resolve_resume_path(resume.file_path)
-            if resolved_path and os.path.exists(resolved_path):
-                try:
-                    os.remove(resolved_path)
-                except Exception:
-                    pass
+            if resume.file_path:
+                delete_file(resume.file_path)
             resume.delete()
             return JsonResponse({"message": "Resume deleted successfully!"}, status=200)
         except Exception as ex:
@@ -352,9 +353,8 @@ def get_resume_file(request, resume_id):
         if not has_app:
             return JsonResponse({"message": "Access forbidden: candidate has not applied to your jobs!"}, status=403)
 
-    resolved_path = _resolve_resume_path(resume.file_path)
-    if not resolved_path or not os.path.exists(resolved_path):
-        return JsonResponse({"message": "Resume file not found on disk!"}, status=404)
+    if not resume.file_path or not file_exists(resume.file_path):
+        return JsonResponse({"message": "Resume file not found!"}, status=404)
 
     _, ext = os.path.splitext(resume.file_name)
     ext = ext.lower()
@@ -368,4 +368,4 @@ def get_resume_file(request, resume_id):
         '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     }.get(ext, 'application/octet-stream')
 
-    return FileResponse(open(resolved_path, 'rb'), content_type=content_type)
+    return serve_file_response(request, resume.file_path, resume.file_name, content_type)
